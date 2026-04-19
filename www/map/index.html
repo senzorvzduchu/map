@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="cs">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Znečištění - Senzorvzduchu.cz</title>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            /* Brand Colors */
+            --brand-primary: #21275F;
+            --brand-secondary: #3845A6;
+
+            /* UI Colors */
+            --bg-light: #ffffff;
+            --text-dark: #111827;
+            --text-muted: #6b7280;
+
+            /* AQI Colors */
+            --aqi-good: #87C159;
+            --aqi-moderate: #F4D35E;
+            --aqi-sensitive: #F48C42;
+            --aqi-unhealthy: #E64A45;
+            --aqi-very-unhealthy: #8C6AB6;
+            --aqi-hazardous: #7D5963;
+            --aqi-no-data: #9ca3af;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            overflow: hidden;
+            position: relative;
+        }
+
+        #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            touch-action: manipulation; /* Prevents browser double-tap zoom, lets Leaflet handle it */
+        }
+
+        /* Legend */
+        .legend {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 10px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            min-width: 140px;
+            border-left: 3px solid var(--brand-primary);
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            margin-bottom: 6px;
+        }
+
+        .legend-title {
+            font-family: 'Familjen Grotesk', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--brand-primary);
+        }
+
+        .legend-content {
+            transition: max-height 0.3s ease;
+            overflow: hidden;
+            max-height: 500px;
+        }
+
+        .legend-content.collapsed {
+            max-height: 0;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 10px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+
+        /* Legend Classes */
+        .l-good { background: var(--aqi-good); }
+        .l-mod { background: var(--aqi-moderate); }
+        .l-sens { background: var(--aqi-sensitive); }
+        .l-unh { background: var(--aqi-unhealthy); }
+        .l-very { background: var(--aqi-very-unhealthy); }
+        .l-haz { background: var(--aqi-hazardous); }
+
+        /* Legend Sources */
+        .legend-sources {
+            margin-top: 6px;
+            padding-top: 6px;
+            border-top: 1px solid #eee;
+        }
+        .legend-source-item {
+            display: flex;
+            align-items: center;
+            margin: 3px 0;
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+        .src-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            flex-shrink: 0;
+            background: #9ca3af;
+        }
+        .src-sc  { border: 1px solid #888; }
+        .src-chmi { border: 2px solid #000; }
+        .src-sck { border: 1px dashed #555; }
+        .src-pa  { border: 2px solid #7B2D8E; }
+        .legend-source-item { cursor: pointer; user-select: none; transition: opacity 0.2s; }
+        .legend-source-item.disabled { opacity: 0.35; text-decoration: line-through; }
+
+        /* Update Indicator */
+        .update-indicator {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: white;
+            padding: 6px 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            border: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .update-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .update-subtitle {
+            font-size: 9px;
+            color: #999;
+            margin-left: 16px;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--brand-secondary);
+        }
+
+        /* Popups - IMPROVED */
+        .leaflet-popup-content-wrapper {
+            background: white;
+            color: var(--text-dark);
+            border-radius: 8px;
+            padding: 0;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            min-width: 250px; /* Increased for chart */
+        }
+
+        .popup-header {
+            background: #f9fafb;
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            border-radius: 8px 8px 0 0;
+            font-family: 'Familjen Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .popup-content-body {
+            padding: 15px;
+        }
+
+        /* New Hero Section for Main Value */
+        .popup-hero {
+            text-align: center;
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .popup-pm-value {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 4px;
+            font-family: 'Familjen Grotesk', sans-serif;
+        }
+
+        .popup-detail {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 4px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .popup-detail.main-label {
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .popup-source {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px solid #eee;
+            font-size: 10px;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        @media (max-width: 768px) {
+            .legend {
+                top: 10px;
+                right: 10px;
+                left: auto;
+                min-width: 120px;
+                padding: 8px 10px;
+            }
+
+            .legend-title { font-size: 11px; }
+            .legend-item { font-size: 9px; margin: 3px 0; }
+            .legend-color { width: 10px; height: 10px; margin-right: 6px; }
+            .update-indicator { bottom: 10px; left: 10px; padding: 5px 10px; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div class="update-indicator">
+        <div class="update-row">
+            <div class="status-dot"></div>
+            <span>Aktualizováno:</span>
+            <span id="lastUpdate" style="font-weight: 600;">Načítám...</span>
+        </div>
+        <div class="update-subtitle">
+            hodinové průměry
+        </div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-header" onclick="toggleLegend()">
+            <div class="legend-title">PM2.5 (μg/m³)</div>
+            <div class="legend-toggle" id="legendToggle">▼</div>
+        </div>
+        <div class="legend-content" id="legendContent">
+            <div class="legend-item"><div class="legend-color l-good"></div><span>0 - 12.0 (Dobrá)</span></div>
+            <div class="legend-item"><div class="legend-color l-mod"></div><span>12.1 - 35.4 (Střední)</span></div>
+            <div class="legend-item"><div class="legend-color l-sens"></div><span>35.5 - 55.4 (Zhoršená)</span></div>
+            <div class="legend-item"><div class="legend-color l-unh"></div><span>55.5 - 150.4 (Nezdravá)</span></div>
+            <div class="legend-item"><div class="legend-color l-very"></div><span>150.5 - 250.4 (Velmi nezdravá)</span></div>
+            <div class="legend-item"><div class="legend-color l-haz"></div><span>250.5+ (Nebezpečná)</span></div>
+            <div class="legend-sources">
+                <div class="legend-source-item" data-layer="community"><span class="src-dot src-sc"></span>Sensor.Community</div>
+                <div class="legend-source-item" data-layer="chmi"><span class="src-dot src-chmi"></span>ČHMÚ (oficiální)</div>
+                <div class="legend-source-item" data-layer="sck"><span class="src-dot src-sck"></span>Smart Citizen</div>
+                <div class="legend-source-item" data-layer="purpleair"><span class="src-dot src-pa"></span>PurpleAir</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        // Map & Global Variables
+        let map;
+        let markers = new Map();
+        let isLoading = false;
+        let activeChart = null;
+
+        // Chart plugin: faint vertical line + Czech day label at midnight of each day
+        const midnightPlugin = {
+            id: 'midnightMarkers',
+            afterDraw(chart) {
+                const { ctx, scales: { x, y }, data } = chart;
+                const dayMap = {Mon:'Po',Tue:'Út',Wed:'St',Thu:'Čt',Fri:'Pá',Sat:'So',Sun:'Ne'};
+                ctx.save();
+                let inMidnight = false;
+                data.labels.forEach((label, i) => {
+                    const parts = label.split('|');
+                    const hour = parseInt(parts[0]);
+                    if (hour === 0 && !inMidnight) {
+                        inMidnight = true;
+                        const xPos = x.getPixelForValue(i);
+                        // Faint day separator line
+                        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([]);
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, y.top);
+                        ctx.lineTo(xPos, y.bottom);
+                        ctx.stroke();
+                        // Czech day label below chart area
+                        ctx.fillStyle = '#aaa';
+                        ctx.font = '9px Inter, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText(dayMap[parts[1]] || parts[1], xPos, y.bottom + 13);
+                    } else if (hour !== 0) {
+                        inMidnight = false;
+                    }
+                });
+                ctx.restore();
+            }
+        };
+
+        window.addEventListener('load', function() {
+            // Initialize Map
+            map = L.map('map', { 
+                zoomControl: true, 
+                attributionControl: true,
+                doubleClickZoom: true, // Explicitly enable
+                zoomAnimation: true
+            }).setView([49.8175, 15.473], 8);
+            
+            // Force Double Click Zoom to stay enabled
+            if (map.doubleClickZoom) {
+                map.doubleClickZoom.enable();
+            }
+
+            // Double-tap zoom for mobile (reliable cross-browser fix)
+            let lastTapTime = 0;
+            map.getContainer().addEventListener('touchend', function(e) {
+                if (e.changedTouches.length !== 1) return; // ignore pinch
+                const now = Date.now();
+                if (now - lastTapTime < 350) {
+                    e.preventDefault();
+                    const touch = e.changedTouches[0];
+                    const rect = map.getContainer().getBoundingClientRect();
+                    const point = L.point(touch.clientX - rect.left, touch.clientY - rect.top);
+                    const latlng = map.containerPointToLatLng(point);
+                    map.setZoomAround(latlng, map.getZoom() + 1);
+                }
+                lastTapTime = now;
+            }, { passive: false });
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap &copy; CARTO',
+                subdomains: 'abcd', maxZoom: 20
+            }).addTo(map);
+
+            // Layer groups per data source (for toggle)
+            window.layers = {
+                community: L.layerGroup().addTo(map),
+                chmi:      L.layerGroup().addTo(map),
+                sck:       L.layerGroup().addTo(map),
+                purpleair: L.layerGroup().addTo(map),
+            };
+
+            // Legend click → toggle network visibility
+            document.querySelectorAll('.legend-source-item[data-layer]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const group = window.layers[el.dataset.layer];
+                    if (map.hasLayer(group)) {
+                        map.removeLayer(group);
+                        el.classList.add('disabled');
+                    } else {
+                        map.addLayer(group);
+                        el.classList.remove('disabled');
+                    }
+                });
+            });
+
+            fetchAllData();
+            setInterval(fetchAllData, 300000); // 5 minutes
+        });
+
+        // --- Helper Functions ---
+        function toggleLegend() {
+            const content = document.getElementById('legendContent');
+            const toggle = document.getElementById('legendToggle');
+            content.classList.toggle('collapsed');
+            toggle.textContent = content.classList.contains('collapsed') ? '▲' : '▼';
+        }
+        if (window.innerWidth <= 768) toggleLegend();
+
+        function getColorForPM25(pm25) {
+            if (pm25 === null) return '#9ca3af'; 
+            if (pm25 <= 12.0) return '#87C159';
+            if (pm25 <= 35.4) return '#F4D35E';
+            if (pm25 <= 55.4) return '#F48C42';
+            if (pm25 <= 150.4) return '#E64A45';
+            if (pm25 <= 250.4) return '#8C6AB6';
+            return '#7D5963';
+        }
+
+        function getRadius(pm25) {
+            if (pm25 === null) return 8;
+            return 8 + Math.min(pm25 / 10, 10);
+        }
+
+        // --- SC Outlier Detection Helpers ---
+        function haversineKm(lat1, lng1, lat2, lng2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function medianOf(arr) {
+            const s = [...arr].sort((a, b) => a - b);
+            const m = Math.floor(s.length / 2);
+            return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+        }
+
+        // --- Data Fetching ---
+        async function fetchAllData() {
+            if (isLoading) return;
+            isLoading = true;
+            const updateEl = document.getElementById('lastUpdate');
+            updateEl.textContent = 'Načítám...';
+            
+            try {
+                await Promise.all([
+                    fetchSensorCommunityData(),
+                    fetchChmiData(),
+                    fetchSmartCitizenData(),
+                    fetchPurpleAirData()
+                ]);
+                const now = new Date();
+                updateEl.textContent = now.toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'});
+            } catch (e) {
+                console.error('Error fetching data:', e);
+                updateEl.textContent = 'Chyba načítání';
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        async function fetchSensorCommunityData() {
+            try {
+                const response = await fetch('../sc-proxy.php');
+                const data = await response.json();
+
+                // First pass: collect temperature/humidity by location ID
+                // (SC API returns one entry per sensor chip; temp/humidity come from a
+                //  separate DHT/BME chip entry at the same location.id)
+                const locationEnv = new Map();
+                data.forEach(sensor => {
+                    let temp = null, hum = null;
+                    sensor.sensordatavalues.forEach(v => {
+                        if (v.value_type === 'temperature') temp = parseFloat(v.value);
+                        if (v.value_type === 'humidity') hum = parseFloat(v.value);
+                    });
+                    if (temp !== null || hum !== null) {
+                        locationEnv.set(sensor.location.id, { temperature: temp, humidity: hum });
+                    }
+                });
+
+                // Second pass: collect valid dust sensors into array for outlier check
+                const scSensors = [];
+                data.forEach(sensor => {
+                    // Check if sensor is indoor - Exclude if true
+                    if (sensor.location.indoor == 1) return;
+
+                    const sensorId = "SC_" + sensor.sensor.id;
+                    if (sensor.sensor.id === 46875 || sensor.sensor.id === 7213) return;
+
+                    let pm25 = null;
+                    let otherValues = [];
+
+                    sensor.sensordatavalues.forEach(v => {
+                        if (v.value_type === 'P2') pm25 = parseFloat(v.value);
+                        else otherValues.push(v);
+                    });
+
+                    if (pm25 === null || !sensor.location.latitude || !sensor.location.longitude) return;
+
+                    // Enrich with temperature/humidity from co-located sensor chip
+                    const env = locationEnv.get(sensor.location.id);
+                    if (env) {
+                        const hasTemp = otherValues.some(v => v.value_type === 'temperature');
+                        const hasHum  = otherValues.some(v => v.value_type === 'humidity');
+                        if (!hasTemp && env.temperature !== null) otherValues.push({ value_type: 'temperature', value: env.temperature });
+                        if (!hasHum  && env.humidity    !== null) otherValues.push({ value_type: 'humidity',    value: env.humidity });
+                    }
+
+                    const lat = parseFloat(sensor.location.latitude);
+                    const lng = parseFloat(sensor.location.longitude);
+                    scSensors.push({ sensorId, lat, lng, pm25, otherValues });
+                });
+
+                // Third pass: neighbor-ratio outlier filter, then render
+                // A sensor is suppressed if it reads > max(60, median_neighbors × 5)
+                // Co-located chips (< 0.1 km) are excluded from neighbor set to avoid mutual reinforcement
+                scSensors.forEach(s => {
+                    if (s.pm25 > 500) {
+                        console.warn(`[SC Outlier] ${s.sensorId}: ${s.pm25} μg/m³ exceeds absolute ceiling`);
+                        return;
+                    }
+                    const neighbors = scSensors.filter(n =>
+                        n.sensorId !== s.sensorId &&
+                        haversineKm(s.lat, s.lng, n.lat, n.lng) >= 0.1 &&
+                        haversineKm(s.lat, s.lng, n.lat, n.lng) <= 30
+                    );
+                    if (neighbors.length >= 2) {
+                        const med = medianOf(neighbors.map(n => n.pm25));
+                        const threshold = Math.max(60, med * 5);
+                        if (s.pm25 > threshold) {
+                            console.warn(`[SC Outlier] ${s.sensorId}: ${s.pm25} μg/m³ vs neighbor median ${med.toFixed(1)} μg/m³ (threshold ${threshold.toFixed(1)})`);
+                            return;
+                        }
+                    }
+                    createOrUpdateMarker(s.sensorId, s.lat, s.lng, s.pm25, getColorForPM25(s.pm25), getRadius(s.pm25), {
+                        type: 'community',
+                        name: `Senzor #${s.sensorId.replace('SC_', '')}`,
+                        otherValues: s.otherValues
+                    });
+                });
+            } catch (e) { console.error('SC Data Error', e); }
+        }
+
+        async function fetchSmartCitizenData() {
+            try {
+                const response = await fetch('../sck-proxy.php');
+                const devices = await response.json();
+
+                devices.forEach(device => {
+                    if (device.exposure !== 'outdoor') return;
+                    if (device.state !== 'has_published') return;
+                    if (!device.latitude || !device.longitude) return;
+
+                    const data = device.data || {};
+                    // PM2.5: measurement ID 89 (SCK 2.1, PMS5003), fallback 7 (older kits)
+                    let pm25 = null;
+                    if (data['89'] != null) pm25 = parseFloat(data['89']);
+                    else if (data['7'] != null) pm25 = parseFloat(data['7']);
+                    if (pm25 === null || isNaN(pm25)) return;
+
+                    const otherValues = [];
+                    if (data['87'] != null) otherValues.push({ value_type: 'PM1', value: parseFloat(data['87']) });
+                    if (data['88'] != null) otherValues.push({ value_type: 'PM10', value: parseFloat(data['88']) });
+                    if (data['55'] != null) otherValues.push({ value_type: 'temperature', value: parseFloat(data['55']) });
+                    if (data['56'] != null) otherValues.push({ value_type: 'humidity', value: parseFloat(data['56']) });
+
+                    const id = 'SCK_' + device.id;
+                    const color = getColorForPM25(pm25);
+                    const radius = getRadius(pm25);
+
+                    createOrUpdateMarker(id, parseFloat(device.latitude), parseFloat(device.longitude),
+                        pm25, color, radius, {
+                            type: 'sck',
+                            name: device.name || ('Smart Citizen #' + device.id),
+                            otherValues
+                        });
+                });
+            } catch (e) { console.error('SCK Data Error', e); }
+        }
+
+        async function fetchPurpleAirData() {
+            try {
+                const response = await fetch('../pa-proxy.php');
+                const sensors = await response.json();
+
+                sensors.forEach(sensor => {
+                    if (sensor.pm25 === null || sensor.pm25 === undefined) return;
+                    if (!sensor.latitude || !sensor.longitude) return;
+
+                    const pm25 = parseFloat(sensor.pm25);
+                    if (isNaN(pm25) || pm25 > 500) return;
+
+                    const otherValues = [];
+                    if (sensor.pm10 != null) otherValues.push({ value_type: 'PM10', value: sensor.pm10 });
+                    if (sensor.temperature != null) otherValues.push({ value_type: 'temperature', value: sensor.temperature });
+                    if (sensor.humidity != null) otherValues.push({ value_type: 'humidity', value: sensor.humidity });
+
+                    const id = 'PA_' + sensor.id;
+                    createOrUpdateMarker(id, parseFloat(sensor.latitude), parseFloat(sensor.longitude),
+                        pm25, getColorForPM25(pm25), getRadius(pm25), {
+                            type: 'purpleair',
+                            name: sensor.name || ('PurpleAir #' + sensor.id),
+                            otherValues,
+                            confidence: sensor.confidence || 'ok'
+                        });
+                });
+            } catch (e) { console.error('PA Data Error', e); }
+        }
+
+        async function fetchChmiData() {
+            const proxyBase = '../chmi-proxy.php';
+            try {
+                const metaUrl = `${proxyBase}?type=metadata`;
+                const metaRes = await fetch(metaUrl);
+                if (!metaRes.ok) throw new Error(`Metadata HTTP Error: ${metaRes.status}`);
+                const metaJson = await metaRes.json();
+
+                const registryMap = new Map();
+                const stations = new Map();
+                const localities = metaJson?.data?.Localities || [];
+
+                localities.forEach(locality => {
+                    if (locality.Active === false) return;
+                    const code = locality.LocalityCode;
+                    const name = locality.Name || code;
+                    const lat = locality.Localization?.LatAsNumber;
+                    const lon = locality.Localization?.LonAsNumber;
+                    if (!code || !lat || !lon) return;
+
+                    if (!stations.has(code)) {
+                        stations.set(code, { lat: parseFloat(lat), lon: parseFloat(lon), name: name, measurements: {} });
+                    }
+
+                    const programs = locality.MeasuringPrograms || [];
+                    programs.forEach(program => {
+                        const measurements = program.Measurements || [];
+                        measurements.forEach(m => {
+                            const regId = m.IdRegistration;
+                            let compCode = m.ComponentCode;
+                            if (!regId || !compCode) return;
+                            if (compCode === 'PM2_5') compCode = 'PM2.5';
+                            if (['PM2.5', 'NO2', 'O3'].includes(compCode)) {
+                                registryMap.set(String(regId), { stationCode: code, compCode: compCode });
+                            }
+                        });
+                    });
+                });
+
+                const csvRes = await fetch(`${proxyBase}?type=data`);
+                if (!csvRes.ok) throw new Error(`CSV HTTP Error: ${csvRes.status}`);
+                const csvText = await csvRes.text();
+                const lines = csvText.split('\n');
+                
+                lines.forEach((line, index) => {
+                    if (index === 0 || !line.trim()) return; 
+                    const cols = line.split(',').map(c => c.trim());
+                    if (cols.length < 4) return;
+
+                    const idReg = cols[0];
+                    const valType = parseInt(cols[2]);
+                    const valStr = cols[3].replace(/\r/g, '');
+                    const value = parseFloat(valStr);
+
+                    if ((valType !== 8 && valType !== 9) || isNaN(value)) return;
+
+                    const mapping = registryMap.get(idReg);
+                    if (mapping) {
+                        const st = stations.get(mapping.stationCode);
+                        if (st) st.measurements[mapping.compCode] = value;
+                    }
+                });
+
+                stations.forEach((station, code) => {
+                    const m = station.measurements;
+                    if (m['PM2.5'] === undefined && m['NO2'] === undefined && m['O3'] === undefined) return;
+
+                    let mainVal = null;
+                    let color = 'transparent';
+                    let hasPM25 = false;
+
+                    if (m['PM2.5'] !== undefined) {
+                        mainVal = m['PM2.5'];
+                        color = getColorForPM25(mainVal);
+                        hasPM25 = true;
+                    }
+
+                    const radius = getRadius(mainVal || 20);
+                    let otherValues = [];
+                    if (m['NO2'] !== undefined) otherValues.push({ value_type: 'NO2', value: m['NO2'] });
+                    if (m['O3'] !== undefined) otherValues.push({ value_type: 'O3', value: m['O3'] });
+                    
+                    createOrUpdateMarker("CHMI_" + code, station.lat, station.lon, mainVal, color, radius, {
+                        type: 'chmi',
+                        name: station.name,
+                        otherValues: otherValues,
+                        hasPM25: hasPM25
+                    });
+                });
+
+            } catch (e) { console.error("Critical Error in fetchChmiData:", e); }
+        }
+
+        // --- Marker Creation ---
+        function createOrUpdateMarker(id, lat, lng, pm25, color, radius, meta) {
+            let popupHtml = `<div class="popup-header">${meta.name}</div>`;
+            popupHtml += `<div class="popup-content-body">`;
+            
+            // HERO SECTION
+            popupHtml += `<div class="popup-hero">`;
+            if (pm25 !== null) {
+                popupHtml += `
+                    <div class="popup-pm-value" style="color: ${color}">
+                        ${pm25.toFixed(1)} <span style="font-size:16px; color:#666">μg/m³</span>
+                    </div>
+                    <div class="popup-detail main-label">PM2.5 koncentrace</div>`;
+            } else {
+                popupHtml += `<div class="popup-detail" style="font-style:italic; color:#999; justify-content:center;">PM2.5 neměřeno</div>`;
+            }
+            popupHtml += `</div>`;
+
+            // CHART CONTAINER
+            popupHtml += `
+                <div class="chart-container" style="margin-bottom: 10px; height: 180px; position: relative; display:none;">
+                    <canvas id="chart_${id}"></canvas>
+                </div>
+                <div id="loading_${id}" style="margin-bottom:10px; font-size:11px; color:#999; text-align:center;">
+                    Načítám historii...
+                </div>
+                <div id="quality_${id}" style="display:none; margin-bottom:8px; padding:5px 8px; background:#fff3cd; border:1px solid #ffc107; border-radius:4px; font-size:11px; color:#856404;">
+                    ⚠ Senzor vykazuje dlouhodobě konstantní/nízkou hodnotu – možné ucpání, nebo porucha ventilátoru
+                </div>`;
+
+            // OTHER VALUES
+            meta.otherValues.forEach(v => {
+                let label = v.value_type;
+                let unit = '';
+                let skip = false;
+                
+                if (label === 'P1' || label === 'PM10') { label = 'PM10'; unit = 'μg/m³'; }
+                else if (label === 'P0' || label === 'PM1') { label = 'PM1'; unit = 'μg/m³'; }
+                else if (label === 'temperature') { label = 'Teplota'; unit = '°C'; }
+                else if (label === 'humidity') { label = 'Vlhkost'; unit = '%'; }
+                else if (label === 'pressure') { label = 'Tlak'; unit = 'hPa'; }
+                else if (label === 'TS') { skip = true; } 
+                else if (['N05','N1','N25','N4','N10'].includes(label)) skip = true; 
+                else { unit = 'μg/m³'; } 
+
+                if (!skip) {
+                    popupHtml += `<div class="popup-detail"><span>${label}:</span> <strong>${parseFloat(v.value).toFixed(1)} ${unit}</strong></div>`;
+                }
+            });
+
+            const sourceText = meta.type === 'chmi' ? 'ČHMÚ (Oficiální)' : (meta.type === 'sck' ? 'Smart Citizen' : (meta.type === 'purpleair' ? 'PurpleAir' : 'Sensor.Community'));
+            popupHtml += `<div class="popup-source">Zdroj: ${sourceText}</div></div>`;
+
+            const isChmi = meta.type === 'chmi';
+            const isPurpleAir = meta.type === 'purpleair';
+            const isEmptyChmi = isChmi && !meta.hasPM25;
+            const borderWeight = isEmptyChmi ? 2 : (isChmi ? 2 : (isPurpleAir ? 2 : 1));
+            const borderColor = isEmptyChmi ? '#999999' : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : 'white'));
+            const fillOpacity = isEmptyChmi ? 0 : 0.8;
+
+            let marker;
+            if (markers.has(id)) {
+                marker = markers.get(id);
+                marker.setRadius(radius);
+                marker.setStyle({ fillColor: color, weight: borderWeight, color: borderColor, fillOpacity: fillOpacity });
+                marker.setPopupContent(popupHtml);
+            } else {
+                marker = L.circleMarker([lat, lng], {
+                    radius: radius, fillColor: color, color: borderColor, weight: borderWeight, opacity: 1, fillOpacity: fillOpacity
+                }).addTo(window.layers[meta.type] || map);
+
+                if(isChmi) marker.bringToFront();
+                marker.bindPopup(popupHtml, { minWidth: 280 }); 
+                markers.set(id, marker);
+            }
+
+            marker.off('popupopen');
+            marker.on('popupopen', function() {
+                loadHistory(id);
+            });
+        }
+
+        // --- Chart Logic ---
+        async function loadHistory(sensorId) {
+            const loadingEl = document.getElementById(`loading_${sensorId}`);
+            if (!loadingEl) return;
+
+            const chartCanvas = document.getElementById(`chart_${sensorId}`);
+            const chartContainer = chartCanvas.parentElement;
+            
+            if (activeChart) {
+                activeChart.destroy();
+                activeChart = null;
+            }
+
+            try {
+                // Use absolute path to ensure it works in embed
+                const response = await fetch(`/historygraph/get_history.php?id=${sensorId}`);
+                if (!response.ok) throw new Error('API Error');
+                const data = await response.json();
+
+                if (data.quality && (data.quality.plateau_high || data.quality.stuck)) {
+                    const qualityEl = document.getElementById(`quality_${sensorId}`);
+                    if (qualityEl) qualityEl.style.display = 'block';
+                }
+
+                if (data.labels && data.labels.length > 0) {
+                    loadingEl.style.display = 'none';
+                    chartContainer.style.display = 'block';
+
+                    const ctx = chartCanvas.getContext('2d');
+                    
+                    // Gradient for Safety Levels (Green -> Yellow -> Red)
+                    let gradient = ctx.createLinearGradient(0, 160, 0, 0); 
+                    gradient.addColorStop(0, 'rgba(135, 193, 89, 0.5)');   
+                    gradient.addColorStop(0.3, 'rgba(244, 211, 94, 0.5)'); 
+                    gradient.addColorStop(0.6, 'rgba(230, 74, 69, 0.5)');  
+                    
+                    const limitData = new Array(data.labels.length).fill(25);
+
+                    activeChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [
+                                {
+                                    label: 'PM2.5',
+                                    data: data.data,
+                                    borderColor: '#21275F',
+                                    backgroundColor: gradient,
+                                    borderWidth: 2,
+                                    pointRadius: 0,
+                                    pointHoverRadius: 4,
+                                    fill: true,
+                                    tension: 0.4,
+                                    order: 2
+                                },
+                                {
+                                    label: '24/h limit 2030', // Updated Label
+                                    data: limitData,
+                                    borderColor: 'rgba(100, 100, 100, 0.8)',
+                                    borderWidth: 1,
+                                    borderDash: [10, 5], 
+                                    pointRadius: 0,
+                                    pointHoverRadius: 0, 
+                                    fill: false,
+                                    tension: 0,
+                                    order: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: { bottom: 16 } // room for midnight day labels
+                            },
+                            interaction: {
+                                mode: 'index',
+                                intersect: false,
+                            },
+                            plugins: {
+                                legend: {
+                                    display: true,
+                                    position: 'top',
+                                    align: 'end',
+                                    labels: {
+                                        boxWidth: 20,
+                                        usePointStyle: false,
+                                        font: { size: 10 },
+                                        filter: function(item, chart) {
+                                            return item.text === '24/h limit 2030';
+                                        }
+                                    }
+                                },
+                                tooltip: {
+                                    filter: function(tooltipItem) {
+                                        return tooltipItem.dataset.label !== '24/h limit 2030';
+                                    },
+                                    callbacks: {
+                                        title: function(tooltipItems) {
+                                            const item = tooltipItems[0];
+                                            const raw = item.chart.data.labels[item.dataIndex]; // "14:30|Mon"
+                                            const parts = raw.split('|');
+                                            const dayMap = {Mon:'Po',Tue:'Út',Wed:'St',Thu:'Čt',Fri:'Pá',Sat:'So',Sun:'Ne'};
+                                            return (dayMap[parts[1]] || parts[1]) + ' ' + parts[0];
+                                        },
+                                        label: function(context) {
+                                            let label = context.dataset.label || '';
+                                            if (label) label += ': ';
+                                            if (context.parsed.y !== null) label += context.parsed.y.toFixed(1) + ' μg/m³';
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: { display: false },
+                                y: {
+                                    beginAtZero: true,
+                                    suggestedMax: 60,
+                                    grid: { color: 'rgba(0,0,0,0.05)' },
+                                    ticks: { font: { size: 9 } },
+                                    title: {
+                                        display: true,
+                                        text: 'μg/m³',
+                                        font: { size: 9 }
+                                    }
+                                }
+                            }
+                        },
+                        plugins: [midnightPlugin]
+                    });
+                } else {
+                    loadingEl.textContent = "Historie zatím není k dispozici.";
+                }
+            } catch (e) {
+                console.error(e);
+                if(loadingEl) loadingEl.textContent = "Chyba načítání grafu.";
+            }
+        }
+    </script>
+</body>
+
+</html>
