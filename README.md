@@ -1,6 +1,8 @@
-# senzorvzduchu.cz — Air Quality Map
+# senzorvzduchu.cz — Air Quality Map (2.5 — libcich)
 
-Real-time air quality monitoring map for the Czech Republic. Aggregates data from four sources into a unified interactive Leaflet map with 5-day historical charts.
+Real-time air quality monitoring map for the Czech Republic. Aggregates data from five sources into a unified interactive Leaflet map with 5-day historical charts.
+
+> **Version 2.5 (SANDBOX — not deployed):** adds the Projekt Libčich (libcich.cz) network — ~45 sensors densely packed in Libčice nad Vltavou, rendered via Leaflet.markercluster (isolated to this layer only). See `TESTING.md` for local testing, `INTEGRATION_BRAINSTORM.md` for the design.
 
 **Live:** https://senzorvzduchu.cz/map/
 
@@ -12,6 +14,7 @@ Real-time air quality monitoring map for the Czech Republic. Aggregates data fro
 | **ČHMÚ** | Official government reference stations | ~30 in CZ |
 | **Smart Citizen Network** | IoT research kits (PMS5003) | ~6 in CZ |
 | **PurpleAir** | Laser particle counters with EPA Barkjohn correction | ~12 in CZ |
+| **Projekt Libčich** | Dense local LoRa network (libcich.cz), raw 2-min + hourly AQI | ~45 in Libčice n. Vlt. |
 
 All PM2.5 values are displayed on a unified AQI color scale. PurpleAir data is EPA-corrected server-side using the Barkjohn 2021 formula.
 
@@ -24,13 +27,17 @@ External APIs
   ├── Sensor.Community JSON  →  sc-proxy.php   →  sc_data_cache.json
   ├── ČHMÚ metadata + CSV    →  chmi-proxy.php →  cache/
   ├── Smart Citizen API      →  sck-proxy.php  →  sck_data_cache.json
-  └── PurpleAir API          →  pa-proxy.php   →  pa_data_cache.json
+  ├── PurpleAir API          →  pa-proxy.php   →  pa_data_cache.json
+  └── libcich.cz API         →  libcich-proxy.php (mode=aq / mode=aqi)
+                                  →  libcich_data_cache.json / libcich_aqi_cache.json
 
 Frontend (Leaflet, every 5 min)
-  └── fetches all four proxies → renders markers with toggle support
+  └── fetches all five proxies → renders markers with toggle support
+      (libcich layer = markercluster + "zoom to Libčice" control)
 
 CRON (every 5 min)
-  └── collect.php → reads all four proxies → writes to SQLite
+  └── collect.php → reads all five proxies → writes to SQLite
+      (libcich: hourly AQI averages, deduped per hour)
 
 User clicks marker → popup with 5-day Chart.js graph
 ```
@@ -47,6 +54,7 @@ www/
 ├── chmi-proxy.php              ← ČHMÚ proxy (15 min cache)
 ├── sck-proxy.php               ← Smart Citizen proxy (5 min cache)
 ├── pa-proxy.php                ← PurpleAir proxy with EPA correction (15 min cache)
+├── libcich-proxy.php           ← Projekt Libčich proxy: ?mode=aq live (2 min cache) / ?mode=aqi hourly (10 min cache)
 ├── cache/                      ← ČHMÚ cached JSON + CSV (auto-generated)
 ├── map/
 │   ├── index.html              ← Main map (full desktop/mobile)

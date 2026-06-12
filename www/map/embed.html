@@ -23,6 +23,8 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -163,6 +165,26 @@
         .src-chmi { border: 2px solid #000; }
         .src-sck { border: 1px dashed #555; }
         .src-pa  { border: 2px solid #7B2D8E; }
+        .src-lib { border: 2px solid #0E7C86; }
+        .legend-zoom {
+            margin-left: auto;
+            padding-left: 6px;
+            color: var(--brand-secondary);
+            font-weight: 700;
+            cursor: pointer;
+        }
+        /* Libčich cluster bublina (Leaflet.markercluster, jen libcich vrstva) */
+        .libcich-cluster { background: transparent; border: none; }
+        .libcich-cluster div {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            border: 2px solid #0E7C86;
+            display: flex; align-items: center; justify-content: center;
+            font: 600 12px 'Familjen Grotesk', sans-serif;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+        }
         .legend-source-item { cursor: pointer; user-select: none; transition: opacity 0.2s; }
         .legend-source-item.disabled { opacity: 0.35; text-decoration: line-through; }
 
@@ -339,18 +361,21 @@
                 <div class="legend-source-item" data-layer="chmi"><span class="src-dot src-chmi"></span>ČHMÚ (oficiální)</div>
                 <div class="legend-source-item" data-layer="sck"><span class="src-dot src-sck"></span>Smart Citizen</div>
                 <div class="legend-source-item" data-layer="purpleair"><span class="src-dot src-pa"></span>PurpleAir</div>
+                <div class="legend-source-item" data-layer="libcich"><span class="src-dot src-lib"></span>Libčich<span class="legend-zoom" id="zoomLibcich" title="Přiblížit na Libčice">⌖</span></div>
             </div>
         </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
         // Map & Global Variables
         let map;
         let markers = new Map();
         let isLoading = false;
         let activeChart = null;
+        let libcichBounds = null;
 
         // Chart plugin: faint vertical line + Czech day label at midnight of each day
         const midnightPlugin = {
@@ -428,6 +453,27 @@
                 chmi:      L.layerGroup().addTo(map),
                 sck:       L.layerGroup().addTo(map),
                 purpleair: L.layerGroup().addTo(map),
+                // Libčich: ~50 senzorů v malém území → clustering IZOLOVANĚ jen na této vrstvě
+                libcich:   (typeof L.markerClusterGroup === 'function'
+                    ? L.markerClusterGroup({
+                        maxClusterRadius: 60,
+                        disableClusteringAtZoom: 15,
+                        spiderfyOnMaxZoom: true,
+                        showCoverageOnHover: false,
+                        iconCreateFunction: function(cluster) {
+                            const vals = cluster.getAllChildMarkers()
+                                .map(m => m.options.pm25Value)
+                                .filter(v => v !== null && v !== undefined);
+                            const med = vals.length ? medianOf(vals) : null;
+                            return L.divIcon({
+                                html: `<div style="background:${getColorForPM25(med)}">${cluster.getChildCount()}</div>`,
+                                className: 'libcich-cluster',
+                                iconSize: [34, 34]
+                            });
+                        }
+                    })
+                    : L.layerGroup()) // fallback když CDN plugin nenaběhne — mapa furt funguje
+                    .addTo(map),
             };
 
             // Legend click → toggle network visibility
@@ -442,6 +488,13 @@
                         el.classList.remove('disabled');
                     }
                 });
+            });
+
+            // „Přiblížit na Libčice“ — lokální hustá síť, z národního pohledu jedním klikem
+            const zoomLib = document.getElementById('zoomLibcich');
+            if (zoomLib) zoomLib.addEventListener('click', (e) => {
+                e.stopPropagation(); // ať klik nepřepne viditelnost vrstvy
+                if (libcichBounds) map.fitBounds(libcichBounds.pad(0.15));
             });
 
             fetchAllData();
@@ -499,7 +552,8 @@
                     fetchSensorCommunityData(),
                     fetchChmiData(),
                     fetchSmartCitizenData(),
-                    fetchPurpleAirData()
+                    fetchPurpleAirData(),
+                    fetchLibcichData()
                 ]);
                 const now = new Date();
                 updateEl.textContent = now.toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'});
@@ -660,6 +714,46 @@
             } catch (e) { console.error('PA Data Error', e); }
         }
 
+        async function fetchLibcichData() {
+            try {
+                const response = await fetch('../libcich-proxy.php');
+                const sensors = await response.json();
+                if (!Array.isArray(sensors)) return;
+
+                const pts = [];
+                sensors.forEach(sensor => {
+                    if (sensor.pm25 === null || sensor.pm25 === undefined) return;
+                    if (!sensor.latitude || !sensor.longitude) return;
+
+                    const pm25 = parseFloat(sensor.pm25);
+                    if (isNaN(pm25) || pm25 < 0 || pm25 > 500) return;
+
+                    const otherValues = [];
+                    if (sensor.pm10 != null) otherValues.push({ value_type: 'PM10', value: sensor.pm10 });
+                    if (sensor.pm1 != null) otherValues.push({ value_type: 'PM1', value: sensor.pm1 });
+                    if (sensor.temperature != null) otherValues.push({ value_type: 'temperature', value: sensor.temperature });
+                    if (sensor.humidity != null) otherValues.push({ value_type: 'humidity', value: sensor.humidity });
+
+                    const lat = parseFloat(sensor.latitude);
+                    const lng = parseFloat(sensor.longitude);
+                    pts.push([lat, lng]);
+
+                    const id = 'LIBCICH_' + sensor.id; // devEid — stabilní HW ID
+                    createOrUpdateMarker(id, lat, lng, pm25, getColorForPM25(pm25), getRadius(pm25), {
+                        type: 'libcich',
+                        name: sensor.name || sensor.id,
+                        otherValues
+                    });
+                });
+
+                if (pts.length) libcichBounds = L.latLngBounds(pts);
+                // překreslit barvy clusterů po aktualizaci hodnot
+                if (typeof window.layers.libcich.refreshClusters === 'function') {
+                    window.layers.libcich.refreshClusters();
+                }
+            } catch (e) { console.error('Libcich Data Error', e); }
+        }
+
         async function fetchChmiData() {
             const proxyBase = '../chmi-proxy.php';
             try {
@@ -803,14 +897,19 @@
                 }
             });
 
-            const sourceText = meta.type === 'chmi' ? 'ČHMÚ (Oficiální)' : (meta.type === 'sck' ? 'Smart Citizen' : (meta.type === 'purpleair' ? 'PurpleAir' : 'Sensor.Community'));
+            const sourceText = meta.type === 'chmi' ? 'ČHMÚ (Oficiální)'
+                : (meta.type === 'sck' ? 'Smart Citizen'
+                : (meta.type === 'purpleair' ? 'PurpleAir'
+                : (meta.type === 'libcich' ? '<a href="https://libcich.cz/" target="_blank" rel="noopener" style="color:inherit;">Projekt Libčich (libcich.cz)</a>'
+                : 'Sensor.Community')));
             popupHtml += `<div class="popup-source">Zdroj: ${sourceText}</div></div>`;
 
             const isChmi = meta.type === 'chmi';
             const isPurpleAir = meta.type === 'purpleair';
+            const isLibcich = meta.type === 'libcich';
             const isEmptyChmi = isChmi && !meta.hasPM25;
-            const borderWeight = isEmptyChmi ? 2 : (isChmi ? 2 : (isPurpleAir ? 2 : 1));
-            const borderColor = isEmptyChmi ? '#999999' : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : 'white'));
+            const borderWeight = isEmptyChmi ? 2 : (isChmi ? 2 : ((isPurpleAir || isLibcich) ? 2 : 1));
+            const borderColor = isEmptyChmi ? '#999999' : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : (isLibcich ? '#0E7C86' : 'white')));
             const fillOpacity = isEmptyChmi ? 0 : 0.8;
 
             let marker;
@@ -818,10 +917,12 @@
                 marker = markers.get(id);
                 marker.setRadius(radius);
                 marker.setStyle({ fillColor: color, weight: borderWeight, color: borderColor, fillOpacity: fillOpacity });
+                marker.options.pm25Value = pm25; // pro barvu libčich clusterů
                 marker.setPopupContent(popupHtml);
             } else {
                 marker = L.circleMarker([lat, lng], {
-                    radius: radius, fillColor: color, color: borderColor, weight: borderWeight, opacity: 1, fillOpacity: fillOpacity
+                    radius: radius, fillColor: color, color: borderColor, weight: borderWeight, opacity: 1, fillOpacity: fillOpacity,
+                    pm25Value: pm25
                 }).addTo(window.layers[meta.type] || map);
 
                 if(isChmi) marker.bringToFront();

@@ -11,6 +11,8 @@ www/crontoken.txt
 www/sc_data_cache.json
 www/sck_data_cache.json
 www/pa_data_cache.json
+www/libcich_data_cache.json
+www/libcich_aqi_cache.json
 www/cache/*.json
 www/cache/*.csv
 

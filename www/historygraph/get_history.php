@@ -14,8 +14,8 @@ if (!isset($_GET['id'])) {
 
 $sensor_id = $_GET['id'];
 
-// Validate format: SC_12345, CHMI_ABCDE1, or SCK_12345 (prevents unexpected input from being echoed back)
-if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+)$/', $sensor_id)) {
+// Validate format: SC_12345, CHMI_ABCDE1, SCK_12345, PA_12345, LIBCICH_<hex devEid> (prevents unexpected input from being echoed back)
+if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|LIBCICH_[A-F0-9]{8,32})$/', $sensor_id)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid sensor ID format']);
     exit;

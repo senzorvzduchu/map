@@ -70,7 +70,6 @@ if ($problem !== null) {
 
     $response = curl_exec($ch);
     $ok = curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200;
-    curl_close($ch);
 
     file_put_contents($cooldown_file, (string)time());
 

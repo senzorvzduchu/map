@@ -11,6 +11,8 @@ $url_chmi_meta  = "https://senzorvzduchu.cz/chmi-proxy.php?type=metadata";
 $url_chmi_data  = "https://senzorvzduchu.cz/chmi-proxy.php?type=data";
 $url_sck_proxy  = "https://senzorvzduchu.cz/sck-proxy.php";
 $url_pa_proxy   = "https://senzorvzduchu.cz/pa-proxy.php";
+// Lokální testování: definuj LIBCICH_PROXY_URL v config.php (např. http://127.0.0.1:8123/libcich-proxy.php?mode=aqi)
+$url_libcich    = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "https://senzorvzduchu.cz/libcich-proxy.php?mode=aqi";
 
 $db_file = __DIR__ . '/air_quality_history.db';
 $retention_days = 5;
@@ -28,7 +30,6 @@ function fetchUrl($url) {
     
     $response = curl_exec($ch);
     $error = curl_error($ch);
-    curl_close($ch);
     
     if ($response === false) {
         echo "<b>Chyba stahování z $url:</b> $error <br>";
@@ -245,7 +246,56 @@ if ($pa_json) {
 }
 
 // ==========================================
-// 5. CLEANUP (Data Retention)
+// 5. PROCESS LIBCICH DATA (hodinové průměry z /api/aqi)
+// ==========================================
+// Jiný vzor než ostatní sítě: libcich-proxy.php?mode=aqi vrací poslední UZAVŘENOU
+// hodinu s measured_at = unix čas začátku hodiny. Cron běží po 5 min, proto se
+// stejná hodina DEDUPLIKUJE (jinak 12 duplicit/hod → rozbitý graf + falešná
+// "stuck" detekce v get_history.php).
+
+$lib_json = fetchUrl($url_libcich);
+if ($lib_json) {
+    $libSensors = json_decode($lib_json, true);
+    if (is_array($libSensors)) {
+        $db->beginTransaction();
+        $stmt  = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+        $check = $db->prepare("SELECT 1 FROM measurements WHERE sensor_id = ? AND value_type = ? AND measured_at = ? LIMIT 1");
+
+        foreach ($libSensors as $sensor) {
+            if (!isset($sensor['pm25']) || $sensor['pm25'] === null) continue;
+            if (empty($sensor['measured_at']) || empty($sensor['id'])) continue;
+
+            $pm25 = floatval($sensor['pm25']);
+            if ($pm25 < 0 || $pm25 > 500) continue; // 0 je u hodinového průměru validní
+
+            $sensor_id = "LIBCICH_" . $sensor['id'];
+            $ts = intval($sensor['measured_at']);
+
+            $check->execute([$sensor_id, 'PM2.5', $ts]);
+            if (!$check->fetch()) {
+                $stmt->execute([$sensor_id, $ts, 'PM2.5', $pm25]);
+                $stats['inserted']++;
+            }
+
+            if (isset($sensor['pm10']) && $sensor['pm10'] !== null) {
+                $pm10 = floatval($sensor['pm10']);
+                if ($pm10 >= 0 && $pm10 <= 1000) {
+                    $check->execute([$sensor_id, 'PM10', $ts]);
+                    if (!$check->fetch()) {
+                        $stmt->execute([$sensor_id, $ts, 'PM10', $pm10]);
+                        $stats['inserted']++;
+                    }
+                }
+            }
+        }
+        $db->commit();
+    } else {
+        echo "Warning: Libcich Proxy did not return valid JSON.\n";
+    }
+}
+
+// ==========================================
+// 6. CLEANUP (Data Retention)
 // ==========================================
 
 $cutoff = time() - ($retention_days * 24 * 60 * 60);
