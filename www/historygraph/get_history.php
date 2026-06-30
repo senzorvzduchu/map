@@ -66,7 +66,7 @@ try {
     $recent = array_map('floatval', $recent);
     $n = count($recent);
 
-    $quality = ['plateau_high' => false, 'stuck' => false, 'mean_2h' => null, 'std_dev_2h' => null, 'samples_2h' => $n];
+    $quality = ['plateau_high' => false, 'stuck' => false, 'stale' => false, 'latest_age_sec' => null, 'mean_2h' => null, 'std_dev_2h' => null, 'samples_2h' => $n];
     $is_chmi = str_starts_with($sensor_id, 'CHMI_');
     if (!$is_chmi && $n >= 6) {
         $mean = array_sum($recent) / $n;
@@ -76,6 +76,17 @@ try {
         $quality['std_dev_2h'] = round($std_dev, 2);
         if ($std_dev < 3.0 && $mean > 60 && $n >= 10) $quality['plateau_high'] = true;
         if ($std_dev < 0.5 && $mean > 10) $quality['stuck'] = true;
+    }
+
+    // Staleness: stáří nejnovějšího bodu. Funguje hlavně pro ČHMÚ, kde measured_at
+    // = začátek hodiny z CSV (od fixu 2.6). Zdravý hodinový feed má nejnovější bod
+    // mladší než ~2 h; práh 3 h tedy toleruje běžné hodinové zpoždění a chytí
+    // zamrzlý zdroj (zmrznutí ČHMÚ opendata = rovná čára v grafu).
+    if (!empty($rows)) {
+        $newest = (int)end($rows)['measured_at'];
+        $age = time() - $newest;
+        $quality['latest_age_sec'] = $age;
+        if ($is_chmi && $age > 10800) $quality['stale'] = true;
     }
 
     // 6. Return JSON

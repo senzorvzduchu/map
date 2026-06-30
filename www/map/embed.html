@@ -955,9 +955,19 @@
                 if (!response.ok) throw new Error('API Error');
                 const data = await response.json();
 
-                if (data.quality && (data.quality.plateau_high || data.quality.stuck)) {
+                if (data.quality) {
                     const qualityEl = document.getElementById(`quality_${sensorId}`);
-                    if (qualityEl) qualityEl.style.display = 'block';
+                    if (qualityEl) {
+                        if (data.quality.stale) {
+                            const hrs = data.quality.latest_age_sec ? Math.floor(data.quality.latest_age_sec / 3600) : null;
+                            qualityEl.innerHTML = '⚠ ČHMÚ momentálně neaktualizuje data'
+                                + (hrs ? ` (poslední hodnota je stará ${hrs} h)` : '')
+                                + ' – oficiální zdroj zřejmě dočasně nepublikuje, graf nemusí ukazovat aktuální stav.';
+                            qualityEl.style.display = 'block';
+                        } else if (data.quality.plateau_high || data.quality.stuck) {
+                            qualityEl.style.display = 'block';
+                        }
+                    }
                 }
 
                 if (data.labels && data.labels.length > 0) {

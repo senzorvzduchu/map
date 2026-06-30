@@ -142,9 +142,15 @@ if ($chmi_meta && $chmi_csv) {
         }
     }
 
+    // Stejný vzor jako Libčich: CHMÚ publikuje hodinové průměry a každý řádek
+    // nese startTime (začátek hodiny, UTC). measured_at proto bereme z CSV, NE
+    // z time(). Cron běží po 5 min, takže stejnou hodinu DEDUPLIKUJEME. Když ČHMÚ
+    // přestane publikovat (zamrzlý zdroj), graf se zastaví na poslední reálné
+    // hodině místo aby kreslil falešnou rovnou čáru rostoucí doprava.
     $lines = explode("\n", $chmi_csv);
     $db->beginTransaction();
-    $stmt = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+    $stmt  = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+    $check = $db->prepare("SELECT 1 FROM measurements WHERE sensor_id = ? AND value_type = ? AND measured_at = ? LIMIT 1");
 
     foreach ($lines as $index => $line) {
         if ($index === 0 || empty(trim($line))) continue;
@@ -152,17 +158,25 @@ if ($chmi_meta && $chmi_csv) {
         $cols = str_getcsv($line);
         if (count($cols) < 4) continue;
 
-        $idReg = $cols[0];
-        $valType = intval($cols[2]); 
-        $valStr = str_replace(',', '.', $cols[3]); 
+        $idReg = trim($cols[0]);
+        $startTime = trim($cols[1]);          // "2026-06-29T07:00:00Z" (UTC, začátek hodiny)
+        $valType = intval($cols[2]);
+        $valStr = str_replace(',', '.', $cols[3]);
         $value = floatval($valStr);
+
+        // startTime → unix; díky 'Z' je výsledek nezávislý na časové zóně serveru
+        $measured_at = strtotime($startTime);
+        if ($measured_at === false) continue; // nečitelný čas → přeskočit
 
         if (($valType === 8 || $valType === 9) && isset($registryMap[$idReg])) {
             $info = $registryMap[$idReg];
-            
+
             if ($info['type'] === 'PM2.5') {
-                $stmt->execute([$info['station'], $timestamp, $info['type'], $value]);
-                $stats['inserted']++;
+                $check->execute([$info['station'], $info['type'], $measured_at]);
+                if (!$check->fetch()) {
+                    $stmt->execute([$info['station'], $measured_at, $info['type'], $value]);
+                    $stats['inserted']++;
+                }
             }
         }
     }
