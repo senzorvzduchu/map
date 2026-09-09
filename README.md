@@ -1,8 +1,8 @@
-# senzorvzduchu.cz — Air Quality Map (2.5 — libcich)
+# senzorvzduchu.cz — Air Quality Map (2.8 — multipollutant, SANDBOX)
 
 Real-time air quality monitoring map for the Czech Republic. Aggregates data from five sources into a unified interactive Leaflet map with 5-day historical charts.
 
-> **Version 2.5 (SANDBOX — not deployed):** adds the Projekt Libčich (libcich.cz) network — ~45 sensors densely packed in Libčice nad Vltavou, rendered via Leaflet.markercluster (isolated to this layer only). See `TESTING.md` for local testing, `INTEGRATION_BRAINSTORM.md` for the design.
+> **Version 2.8 (SANDBOX — not deployed, 2026-09-04):** multi-pollutant map ported from nosicheck.cz — pollutant bar (PM2.5 / PM10 / NO₂ / O₃ / noise), IDW interpolation overlay with wind advection, animated wind layer (Open-Meteo), methodology modal, label tiles above the color field, ČHMÚ air-quality warnings (slide-in banner), ČHMÚ forecast in the popup chart (24 h + 24 h outlook / 5 days), sensor bans + auto quality flags. Frontend split into shared `map/*.js` + `style.css`. See `TESTING.md` and `MIGRATION.md`. Production is 2.7 (CARTO key).
 
 **Live:** https://senzorvzduchu.cz/map/
 
@@ -55,10 +55,23 @@ www/
 ├── sck-proxy.php               ← Smart Citizen proxy (5 min cache)
 ├── pa-proxy.php                ← PurpleAir proxy with EPA correction (15 min cache)
 ├── libcich-proxy.php           ← Projekt Libčich proxy: ?mode=aq live (2 min cache) / ?mode=aqi hourly (10 min cache)
+├── wind-proxy.php              ← 2.8: Open-Meteo wind grid for leaflet-velocity + interpolation (60 min cache, no cron)
+├── alerts-proxy.php            ← 2.8: ČHMÚ SIVS warnings (CAP), air-quality category only (10 min cache, no cron)
+├── forecast-proxy.php          ← 2.8: ČHMÚ model forecast per kraj, anchored to the sensor (30 min cache, no cron)
+├── sensor-bans.php             ← 2.8: public ban list + auto quality flags (10 min cache)
+├── admin/bans.php              ← 2.8: token-gated ban management UI
+├── lib/                        ← 2.8: Http, Alerts, Forecast (from nosicheck.cz), SensorQuality
 ├── cache/                      ← ČHMÚ cached JSON + CSV (auto-generated)
 ├── map/
-│   ├── index.html              ← Main map (full desktop/mobile)
-│   └── embed.html              ← Compact iframe variant
+│   ├── index.html              ← Main map shell (full desktop/mobile)
+│   ├── embed.html              ← Compact iframe shell (same JS, compact CSS overrides)
+│   ├── style.css               ← 2.8: shared styles
+│   ├── app.js                  ← 2.8: core — POLLUTANTS registry, sensorStore, 5 fetchers, markers, history chart
+│   ├── interp.js               ← 2.8: IDW interpolation overlay (trust-weighted, wind-advected)
+│   ├── wind.js                 ← 2.8: animated wind layer (leaflet-velocity)
+│   ├── info.js                 ← 2.8: methodology modal
+│   ├── alerts.js               ← 2.8: ČHMÚ air-quality warning banner + ORP lookup
+│   └── orp-areas.js            ← 2.8: ORP polygons (generated at nosicheck.cz, copied)
 └── historygraph/
     ├── collect.php             ← CRON data collector (every 5 min)
     ├── get_history.php         ← History API for chart popups

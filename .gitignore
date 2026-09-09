@@ -47,3 +47,9 @@ www/historygraph/backup/
 # FTP/deploy artifacts
 *.bak
 *.orig
+
+# 2.8: wind grid build lock
+www/cache/*.lock
+
+# 2.8: forecast cache dir
+www/cache/forecast/

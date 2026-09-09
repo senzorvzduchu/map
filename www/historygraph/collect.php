@@ -6,13 +6,15 @@
 require_once __DIR__ . '/../config.php';
 $cron_token = CRON_TOKEN;
 
-$url_sc_proxy   = "https://senzorvzduchu.cz/sc-proxy.php";
-$url_chmi_meta  = "https://senzorvzduchu.cz/chmi-proxy.php?type=metadata";
-$url_chmi_data  = "https://senzorvzduchu.cz/chmi-proxy.php?type=data";
-$url_sck_proxy  = "https://senzorvzduchu.cz/sck-proxy.php";
-$url_pa_proxy   = "https://senzorvzduchu.cz/pa-proxy.php";
-// Lokální testování: definuj LIBCICH_PROXY_URL v config.php (např. http://127.0.0.1:8123/libcich-proxy.php?mode=aqi)
-$url_libcich    = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "https://senzorvzduchu.cz/libcich-proxy.php?mode=aqi";
+// Lokální testování: definuj PROXY_BASE_URL (např. http://127.0.0.1:8128) v config.php
+// nebo před include — všechny proxy se pak čtou z lokálního serveru.
+$proxy_base     = defined('PROXY_BASE_URL') ? rtrim(PROXY_BASE_URL, '/') : "https://senzorvzduchu.cz";
+$url_sc_proxy   = "$proxy_base/sc-proxy.php";
+$url_chmi_meta  = "$proxy_base/chmi-proxy.php?type=metadata";
+$url_chmi_data  = "$proxy_base/chmi-proxy.php?type=data";
+$url_sck_proxy  = "$proxy_base/sck-proxy.php";
+$url_pa_proxy   = "$proxy_base/pa-proxy.php";
+$url_libcich    = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "$proxy_base/libcich-proxy.php?mode=aqi";
 
 $db_file = __DIR__ . '/air_quality_history.db';
 $retention_days = 5;
@@ -68,6 +70,15 @@ try {
     die("DB Error: " . $e->getMessage());
 }
 
+// 2.8: ručně blokované senzory (admin/bans.php, tabulka sensor_bans) se neukládají.
+// Dříve natvrdo vyloučené jednotky SC 46875 a 7213 jsou v tabulce od jejího vzniku.
+require_once __DIR__ . '/../lib/SensorQuality.php';
+try {
+    $bannedSensors = array_flip(SensorQuality::manualBans($db));
+} catch (Throwable $e) {
+    $bannedSensors = []; // raději sbírat vše než spadnout
+}
+
 // ==========================================
 // 1. PROCESS SENSOR.COMMUNITY DATA
 // ==========================================
@@ -83,11 +94,11 @@ if ($sc_json) {
         $stmt = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
 
         foreach ($data as $sensor) {
-            if ($sensor['sensor']['id'] == 46875 || $sensor['sensor']['id'] == 7213) continue; // Excluded: faulty sensors with unreliable readings
             // Indoor filter
             if (isset($sensor['location']['indoor']) && $sensor['location']['indoor'] == 1) continue;
 
             $sensor_id = "SC_" . $sensor['sensor']['id'];
+            if (isset($bannedSensors[$sensor_id])) continue;
             
             foreach ($sensor['sensordatavalues'] as $val) {
                 $type = $val['value_type'];
@@ -98,6 +109,12 @@ if ($sc_json) {
                     $pm25 = floatval($val['value']);
                     if ($pm25 <= 0 || $pm25 > 500) continue; // Implausible value — physically impossible outdoors in CZ
                     $stmt->execute([$sensor_id, $timestamp, $type, $pm25]);
+                    $stats['inserted']++;
+                } elseif ($type === 'PM10') {
+                    // 2.8: PM10 pro vrstvu PM10
+                    $pm10 = floatval($val['value']);
+                    if ($pm10 <= 0 || $pm10 > 1000) continue;
+                    $stmt->execute([$sensor_id, $timestamp, $type, $pm10]);
                     $stats['inserted']++;
                 }
             }
@@ -132,7 +149,8 @@ if ($chmi_meta && $chmi_csv) {
                             $comp = $m['ComponentCode'];
                             if ($comp === 'PM2_5') $comp = 'PM2.5';
 
-                            if (in_array($comp, ['PM2.5', 'NO2', 'O3'])) {
+                            // 2.8: všechny čtyři zobrazované látky
+                            if (in_array($comp, ['PM2.5', 'PM10', 'NO2', 'O3'])) {
                                 $registryMap[$regId] = ['station' => "CHMI_" . $code, 'type' => $comp];
                             }
                         }
@@ -155,14 +173,18 @@ if ($chmi_meta && $chmi_csv) {
     foreach ($lines as $index => $line) {
         if ($index === 0 || empty(trim($line))) continue;
 
-        $cols = str_getcsv($line);
+        $cols = str_getcsv($line, ",", "\"", "");
         if (count($cols) < 4) continue;
 
         $idReg = trim($cols[0]);
         $startTime = trim($cols[1]);          // "2026-06-29T07:00:00Z" (UTC, začátek hodiny)
         $valType = intval($cols[2]);
-        $valStr = str_replace(',', '.', $cols[3]);
+        $valStr = str_replace(',', '.', trim($cols[3]));
+        // Prázdný/nečíselný sloupec NESMÍ skončit jako 0.0 (dedupe by pak správnou
+        // hodnotu té hodiny navždy blokovala)
+        if (!is_numeric($valStr)) continue;
         $value = floatval($valStr);
+        if ($value < 0 || $value > 500) continue;
 
         // startTime → unix; díky 'Z' je výsledek nezávislý na časové zóně serveru
         $measured_at = strtotime($startTime);
@@ -171,12 +193,11 @@ if ($chmi_meta && $chmi_csv) {
         if (($valType === 8 || $valType === 9) && isset($registryMap[$idReg])) {
             $info = $registryMap[$idReg];
 
-            if ($info['type'] === 'PM2.5') {
-                $check->execute([$info['station'], $info['type'], $measured_at]);
-                if (!$check->fetch()) {
-                    $stmt->execute([$info['station'], $measured_at, $info['type'], $value]);
-                    $stats['inserted']++;
-                }
+            // 2.8: ukládáme PM2.5, PM10, NO2 i O3 (každá látka dedupe per hodina)
+            $check->execute([$info['station'], $info['type'], $measured_at]);
+            if (!$check->fetch()) {
+                $stmt->execute([$info['station'], $measured_at, $info['type'], $value]);
+                $stats['inserted']++;
             }
         }
     }
@@ -211,11 +232,31 @@ if ($sck_json) {
                 $pm25 = floatval($data['7']);
             }
 
-            if ($pm25 === null || !is_finite($pm25)) continue;
-
             $sensor_id = "SCK_" . $device['id'];
-            $stmt->execute([$sensor_id, $timestamp, 'PM2.5', $pm25]);
-            $stats['inserted']++;
+            if (isset($bannedSensors[$sensor_id])) continue;
+
+            if ($pm25 !== null && is_finite($pm25) && $pm25 > 0 && $pm25 <= 500) {
+                $stmt->execute([$sensor_id, $timestamp, 'PM2.5', $pm25]);
+                $stats['inserted']++;
+            }
+
+            // 2.8: PM10 (ID 88)
+            if (isset($data['88']) && $data['88'] !== null) {
+                $pm10 = floatval($data['88']);
+                if (is_finite($pm10) && $pm10 > 0 && $pm10 <= 1000) {
+                    $stmt->execute([$sensor_id, $timestamp, 'PM10', $pm10]);
+                    $stats['inserted']++;
+                }
+            }
+
+            // 2.8: hluk dB(A) z MEMS mikrofonu (ID 53 v naší normalizaci)
+            if (isset($data['53']) && $data['53'] !== null) {
+                $noise = floatval($data['53']);
+                if (is_finite($noise) && $noise >= 20 && $noise <= 130) {
+                    $stmt->execute([$sensor_id, $timestamp, 'noise', $noise]);
+                    $stats['inserted']++;
+                }
+            }
         }
         $db->commit();
     } else {
@@ -241,6 +282,7 @@ if ($pa_json) {
             if ($pm25 <= 0 || $pm25 > 500) continue;
 
             $sensor_id = "PA_" . $sensor['id'];
+            if (isset($bannedSensors[$sensor_id])) continue;
             $stmt->execute([$sensor_id, $timestamp, 'PM2.5', $pm25]);
             $stats['inserted']++;
 
@@ -283,6 +325,7 @@ if ($lib_json) {
             if ($pm25 < 0 || $pm25 > 500) continue; // 0 je u hodinového průměru validní
 
             $sensor_id = "LIBCICH_" . $sensor['id'];
+            if (isset($bannedSensors[$sensor_id])) continue;
             $ts = intval($sensor['measured_at']);
 
             $check->execute([$sensor_id, 'PM2.5', $ts]);

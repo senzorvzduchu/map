@@ -109,20 +109,24 @@ if (is_array($allDevices)) {
         $lng = $device['data']['location']['longitude']
             ?? $device['location']['longitude'];
 
-        // Hledáme PM2.5 podle vzoru v názvu senzoru
+        // Hledáme PM2.5 a hluk podle vzoru v názvu senzoru (2.8: stačí jedno z nich)
         $sensors = $device['data']['sensors'] ?? [];
-        $pm25 = findSensor($sensors, '2.5');
+        $pm25  = findSensor($sensors, '2.5');
+        $noise = findSensor($sensors, 'noise');   // MEMS mikrofon, dB(A)
 
-        if ($pm25 === null) {
+        if ($pm25 === null && $noise === null) {
             if ($debug) {
                 $sensorNames = array_map(fn($s) => ($s['name'] ?? '?') . '=' . ($s['value'] ?? 'null'), $sensors);
-                $debugSkipped[] = ['id' => $id, 'name' => $device['name'], 'reason' => 'no PM2.5 value', 'sensors' => $sensorNames];
+                $debugSkipped[] = ['id' => $id, 'name' => $device['name'], 'reason' => 'no PM2.5 nor noise value', 'sensors' => $sensorNames];
             }
             continue;
         }
 
-        // Ostatní hodnoty
-        $data = ['89' => $pm25];
+        // Normalizace na číselná ID měření (kompatibilita frontendu):
+        // 89=PM2.5, 87=PM1, 88=PM10, 55=teplota, 56=vlhkost, 53=hluk dB(A)
+        $data = [];
+        if ($pm25  !== null) $data['89'] = $pm25;
+        if ($noise !== null) $data['53'] = $noise;
         $pm1  = findSensor($sensors, 'pm 1');
         if ($pm1 === null) $pm1 = findSensor($sensors, 'pm1');
         $pm10 = findSensor($sensors, 'pm 10');

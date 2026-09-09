@@ -1,73 +1,130 @@
-# 2.5-libcich — Lokální testování (sandbox)
+# 2.8-multipollutant — Lokální testování (sandbox)
 
-> Stav: **implementováno a otestováno lokálně 12. 6. 2026. NIC NENASAZENO na produkci.**
-> Záloha všeho před změnami: `_ZALOHA_2026-06-12/NEW-MAP-Senzorvzduchu-FULL-2026-06-12-v2.zip` (297 souborů včetně .git, ověřeno).
+> Stav: **implementováno a otestováno lokálně 4. 9. 2026 (dvě kola). NIC NENASAZENO na produkci.**
+> Výchozí bod: kopie `2.7-carto-key` (LIVE). Původní verze změněných souborů: `backup-2.7/`.
+
+## Co je nového (převzato z nosicheck.cz)
+
+Kolo 1 (lišta, interpolace, vítr):
+- **Lišta látek** nahoře: PM2.5 · PM10 · NO₂ · O₃ · 🔊 Hluk · ℹ. Přepíná barvy markerů,
+  pásma legendy, hero v popupu i graf. Volba se pamatuje (`sv_pollutant`). Na mobilu centrovaná.
+- **Interpolační vrstva** (IDW, váhy sítí ČHMÚ 1.0 > PurpleAir 0.25 > SCK 0.15 > SC = Libčich 0.10,
+  unášení větrem, nic dál než 25 km od senzoru). Zapnutá ve výchozím stavu, vypíná se v legendě.
+- **Vítr** (leaflet-velocity, Open-Meteo 15×12 bodů, hodinově). Vypnutý ve výchozím stavu.
+- **Popisky map nad interpolací**, přepínač podkladu Světlá / Barevná / OSM.
+- **Modal „Jak mapa funguje"**, ČHMÚ bez zvolené látky = prázdné kolečko.
+
+Kolo 2 (výstrahy, předpověď, blokace):
+- **Výstrahy ČHMÚ na kvalitu ovzduší** — lišta vyjíždějící zleva (stejná logika jako nosíček),
+  jen kategorie smog (smogová situace, prach, ozon, NO₂, SO₂). Ostatní (bouřky, vítr…) se nezobrazují.
+  Když nějaká platí, mapa se zeptá na polohu a ukáže jen výstrahy pro ORP návštěvníka; bez polohy
+  celostátní přehled. **Bez platné výstrahy se mapa na polohu neptá.** Po 5 s se lišta stáhne do
+  záložky, klik otevře plný text v modalu.
+- **Graf v popupu**: výchozí **24 h historie + 24 h výhled ČHMÚ** („teď" uprostřed, hodinová MAXIMA),
+  přepínač „5 dní" = surové body bez předpovědi (`sv_chart_range`). Předpověď je ukotvená na
+  úroveň senzoru (průměr 3 h, jinak mapa ČHMÚ, clamp 0,33–3), světlý pás = rozpětí v kraji,
+  jednořádková poznámka max/min pod grafem. Hluk bez předpovědi.
+- **Ruční blokace senzorů**: `admin/bans.php?token=…` (bez účtů, chrání token), ban/unban,
+  holé číslo = SC_. Blokovaný senzor zmizí z mapy, interpolace i kolektoru. Dřívější natvrdo
+  vyloučené SC 46875 a 7213 jsou v tabulce od jejího vzniku, v kódu už nejsou.
+- **Automatické příznaky kvality** (`SensorQuality`): za 2 h ≥ 12 vzorků PM, *stuck* (odchylka
+  < 0,5 při průměru > 10) nebo *plateau* (odchylka < 3 při průměru > 60) → senzor se skryje
+  z mapy i interpolace, samo se zruší. Vidět v adminu s tlačítkem „Zablokovat trvale".
+- **Backend**: `wind-proxy.php`, `alerts-proxy.php`, `forecast-proxy.php`, `sensor-bans.php`,
+  `admin/bans.php`, `lib/{Http,Alerts,Forecast,SensorQuality}.php` (nové); `sck-proxy.php` (+ hluk),
+  `collect.php` (PM10/NO₂/O₃/hluk, blokace, validace), `get_history.php` (`?type=`, hodinový režim,
+  výpadky, timezone). Vše bez cronu — cache se obnovuje při prvním požadavku po expiraci
+  (zámek + fallback na starou cache), `?token=CRON_TOKEN` vynutí obnovu.
+- Frontend rozdělen na sdílené soubory `app.js` / `interp.js` / `wind.js` / `info.js` / `alerts.js` /
+  `orp-areas.js` / `style.css` + dvě HTML slupky.
 
 ## Rychlý start
 
-V kořeni `2.5-libcich` spusť:
+V kořeni `2.8-multipollutant` spusť (nebo `.claude/launch.json` → `multipollutant-sandbox`):
 
 ```powershell
-php -d curl.cainfo="C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt" -S 127.0.0.1:8123 -t www
+php -d curl.cainfo="C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt" -d display_errors=0 -S 127.0.0.1:8128 -t www
 ```
 
-a otevři:
-- **http://127.0.0.1:8123/map/index.html** — hlavní mapa
-- **http://127.0.0.1:8123/map/embed.html** — embed varianta
+- **http://127.0.0.1:8128/map/index.html** — hlavní mapa
+- **http://127.0.0.1:8128/map/embed.html** — embed varianta
+- **http://127.0.0.1:8128/admin/bans.php?token=…** — blokace (token = CRON_TOKEN z lokální config.php,
+  nebo ADMIN_TOKEN, pokud ho definuješ)
 
-Pozn.: `curl.cainfo` je potřeba jen lokálně na Windows (PHP CLI nemá CA bundle → SSL chyba). Na Active24 to funguje bez toho.
-
-## Co testovat (vše už prošlo, ale mrkni očima)
-
-1. **Mapa na národním zoomu** — u Libčic (severně od Prahy) je jedna cluster bublina „45" s teal okrajem (#0E7C86).
-2. **Legenda → řádek „Libčich"** — klik přepíná viditelnost vrstvy; ikonka **⌖** vpravo = „přiblížit na Libčice" (fitBounds).
-3. **Zoom k Libčicím** — cluster se postupně rozpadá (22, 9, 4, 3…), od zoomu 15 jednotlivé senzory.
-4. **Klik na senzor** — popup: PM2.5 hodnota, graf historie, PM10/PM1/teplota/vlhkost, „Zdroj: Projekt Libčich (libcich.cz)" s odkazem (přání admina).
-5. **Ostatní 4 sítě beze změny** — SC/ČHMÚ/SCK/PA markery i toggly fungují jako dřív, žádný clustering.
-
-## Diagnostika proxy
-
-```
-http://127.0.0.1:8123/libcich-proxy.php?debug=1          ← živá data (mode=aq)
-http://127.0.0.1:8123/libcich-proxy.php?mode=aqi&debug=1 ← hodinové průměry pro kolektor
-```
-`debug=1` ukáže volané URL, HTTP kódy a vzorek senzorů (obchází cache).
-
-## Test kolektoru (bez tokenu)
+Offline testy (bez sítě, bez DB):
 
 ```powershell
-php -d curl.cainfo="C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt" tests\test_libcich_collect.php
+php tests/test_alerts.php
+php tests/test_forecast.php
 ```
-Replikuje libcich blok z `collect.php` proti lokální proxy (server musí běžet). Druhé spuštění musí vypsat `inserted: 0` (deduplikace hodin). Ověřeno: 92 řádků (46 senzorů × PM2.5+PM10), dedupe OK.
 
-Plný `collect.php` lokálně: do **lokální** `www/config.php` přidej
-`define('LIBCICH_PROXY_URL', 'http://127.0.0.1:8123/libcich-proxy.php?mode=aqi');`
-a zavolej `http://127.0.0.1:8123/historygraph/collect.php?token=<tvůj token>`. (Bez definice jde na produkční URL.)
+Oba: `ALL PASS` (4. 9. 2026).
 
-## Co se změnilo proti 2.4
+## Kolektor lokálně (bez znalosti tokenu)
 
-| Soubor | Změna |
-|---|---|
-| `www/libcich-proxy.php` | **NOVÝ** — 2 režimy (`?mode=aq`/`aqi`), cache 120/600 s, fallback na starou cache, `?debug=1` |
-| `www/map/index.html` + `embed.html` | identicky: markercluster CDN (JS+CSS), vrstva `libcich` (cluster izolovaně), `fetchLibcichData()`, legenda + ⌖, větve v `createOrUpdateMarker` (teal okraj, atribuce s odkazem) |
-| `www/historygraph/collect.php` | blok 5: libcich hodinové průměry s deduplikací per hodina; `LIBCICH_PROXY_URL` override pro lokální test |
-| `www/historygraph/get_history.php` | regex whitelist: + `LIBCICH_[A-F0-9]{8,32}` |
-| `.gitignore` | + `libcich_data_cache.json`, `libcich_aqi_cache.json` |
-| všechny PHP | odstraněno `curl_close()` (deprecated v PHP 8.5, bez efektu od 8.0 — lokální PHP 8.5 jinak rozbíjelo JSON deprecation noticy) |
+Před prvním během smaž zkopírované cache (proxy servírují staré soubory podle mtime):
 
-## Záludnosti API zjištěné při implementaci (ověřeno proti živému API)
+```powershell
+Remove-Item www\cache\chmi_*.* , www\*_cache.json -ErrorAction SilentlyContinue
+```
 
-- **Parametry `year/month/day/hour` jsou v LOKÁLNÍM čase (Europe/Prague), ale klíče intervalů v odpovědi jsou UTC.** Proxy počítá pražský čas.
-- **Bucket aktuální hodiny obsahuje předvytvořený BUDOUCÍ hraniční interval** s placeholder záznamy (vše 0, prázdné devId, lat/lng 0). Proxy je přeskakuje — jinak by přepsaly reálná data nulami.
-- `/aq`: pole `pm10_0`; `/aqi`: pole `pm10` (jiné názvy!).
-- Senzory občas hlásí vlhkost 1 % nebo 99.9/100 % — surová data, zobrazujeme jak jsou.
-- Poslední interval v `/aqi` je rozpracovaná hodina → kolektor bere poslední **uzavřenou** (klíč + 1 h ≤ teď).
+Pak (server musí běžet):
 
-## Až budeš spokojený → nasazení (FTP, ruční!)
+```powershell
+php -d curl.cainfo="C:\Program Files\Git\mingw64\etc\ssl\certs\ca-bundle.crt" -r 'define("PROXY_BASE_URL","http://127.0.0.1:8128"); require "www/config.php"; $_GET["token"]=CRON_TOKEN; require "www/historygraph/collect.php";'
+```
 
-Soubory k uploadu na Active24 (po finálním odsouhlasení, dle DEPLOYMENT_CHECKLIST):
-1. `www/libcich-proxy.php` (nový)
-2. `www/map/index.html` + `www/map/embed.html`
-3. `www/historygraph/collect.php` + `www/historygraph/get_history.php`
+Ověřeno: první běh 806 řádků (ČHMÚ NO₂ 60 / O₃ 55 / PM10 81 / PM2.5 56 stanic, Libčich 43×2,
+SCK 11×3, SC ~100×2, PA), druhý běh ČHMÚ/Libčich 0 nových (dedupe per hodina).
 
-`config.php` na produkci se NEMĚNÍ (žádný nový klíč). Historie se začne plnit po prvním cron běhu, plná po ~5 dnech. **`tests/` a `*.md` se nenahrávají.**
+## Co testovat očima
+
+1. **Lišta**: PM10 → NO₂ (jen ČHMÚ, ostatní prázdná kolečka) → O₃ → Hluk (jen SCK, „Interpolace" zešedne).
+2. **Interpolace**: barevné pole, nic dál než ~25 km, vypnutí sítě v legendě ji odebere i z odhadu.
+3. **Vítr**: klik na „Vítr" → částice + readout vpravo dole.
+4. **Popup**: hero = aktivní látka; graf „24 h + výhled": šedá pravá polovina s čárkovanou
+   předpovědí, pás rozpětí, poznámka „Výhled ČHMÚ (kraj): max… min…"; „5 dní" = surová historie.
+   Přepnutí látky nad otevřeným popupem překreslí graf. Hlavička jde přes celou šířku bubliny,
+   × je uvnitř hlavičky; na mobilu se popup po načtení grafu posune pod lištu i sbalenou legendu
+   (×  vždy dostupné), obsah má vnitřní scroll, na desktopu se nevejde pod legendu vpravo.
+5. **Libčich**: cluster barvou podle mediánu aktivní látky, ⌖ přiblíží.
+6. **ℹ modal**: sekce sítě, látky, škála, interpolace, vítr, graf, předpověď, výstrahy, kontrola kvality.
+7. **Podklad**: Světlá / Barevná / OSM.
+8. **Mobil (≤768 px)**: lišta přes šířku s centrovaným obsahem, zoom pod ní, legenda sbalená.
+9. **Embed**: totéž bez přepínače podkladu.
+10. **Výstraha**: dnes žádná smogová neplatí → lišta se neukáže (správně). Vzhled se dá ověřit
+    v konzoli: `ncAlertRender([{event:'Smogová situace',cat:'smog',level:3,inforce:true,regions:['Moravskoslezský kraj'],orp:[8101],expires:new Date(Date.now()+36e5).toISOString(),desc:'test'}],'cz')`.
+11. **Admin**: ban `99999` → v `sensor-bans.php` přibude `SC_99999`, na mapě zmizí (po reloadu);
+    unban → zmizí ze seznamu; ban `CHMI_…` → odmítnuto.
+
+Ověřeno v Browser pane 4. 9. 2026: 1–6, 8–11 OK (výstraha přes syntetická data — karta, záložka
+po 5 s, modal), žádné chyby v konzoli. Bod 7 „Barevná" zkontrolovat v normálním okně (skrytý panel
+nespouští `requestAnimationFrame`, Leaflet nedokončí fade-in dlaždic).
+
+## Diagnostika
+
+```
+http://127.0.0.1:8128/wind-proxy.php                                   ← X-Source: OpenMeteo-Live | Local-Cache | Local-Cache-Stale
+http://127.0.0.1:8128/alerts-proxy.php                                 ← {generated, source, filter:"smog", alerts:[…]}
+     www/cache/alerts_latest.json                                      ← všechny kategorie (jen ke kontrole)
+http://127.0.0.1:8128/forecast-proxy.php?area=19&type=PM10&sensor=CHMI_ALEGA  ← anchor_src: sensor | chmi_map | null
+     www/cache/forecast/meta.json                                      ← run, 14 krajů
+http://127.0.0.1:8128/sensor-bans.php                                  ← {banned, auto}
+http://127.0.0.1:8128/sck-proxy.php?debug=1                            ← hluk = klíč "53"
+http://127.0.0.1:8128/historygraph/get_history.php?id=SCK_19410&type=noise
+http://127.0.0.1:8128/historygraph/get_history.php?id=CHMI_ABRE&type=NO2&hours=24&step=hour
+```
+
+Kódy krajů pro `area=`: 19 Praha, 27 Středočeský, 35 Jihočeský, 43 Plzeňský, 51 Karlovarský,
+60 Ústecký, 78 Liberecký, 86 Královéhradecký, 94 Pardubický, 108 Vysočina, 116 Jihomoravský,
+124 Olomoucký, 141 Zlínský, 132 Moravskoslezský.
+
+## Známé meze
+
+- Historie PM10/NO₂/O₃/hluku a hodinový 24h pohled se na produkci naplní až po nasazení
+  `collect.php` (plné za 5 dní; 24h pohled za den).
+- První požadavek po expiraci cache čeká na zdroj: vítr ~2–5 s, výstrahy do ~10 s (jen když se
+  bulletin změnil), předpověď ~5–15 s (4 ZIPy, jen když ČHMÚ vydal nový běh). Volitelné URL crony
+  to schovají (viz MIGRATION.md).
+- Token adminu zůstává v historii prohlížeče správce — proto samostatný `ADMIN_TOKEN`.
+- Automatické příznaky nikdy nezachytí hodinové zdroje (Libčich) — ty nemají 12 vzorků za 2 h.

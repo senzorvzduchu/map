@@ -298,16 +298,19 @@ Both files share identical JS logic. `embed.html` has additional compact CSS ove
 - Toggled-off sources show strikethrough + reduced opacity (`.legend-source-item.disabled`)
 - Toggle state persists across data refreshes (existing markers update in place within their layer group)
 
-**AQI colour scale (PM2.5 μg/m³):**
+**Colour scale (EEA EAQI, 2024 revision — ETC/HE Report 2024/17; hourly values for all pollutants):**
 
-| Range | Label | Colour |
-|-------|-------|--------|
-| 0 – 12.0 | Dobrá | `#87C159` |
-| 12.1 – 35.4 | Střední | `#F4D35E` |
-| 35.5 – 55.4 | Zhoršená | `#F48C42` |
-| 55.5 – 150.4 | Nezdravá | `#E64A45` |
-| 150.5 – 250.4 | Velmi nezdravá | `#8C6AB6` |
-| 250.5+ | Nebezpečná | `#7D5963` |
+| Class (label) | PM2.5 | PM10 | NO₂ | O₃ | Colour |
+|---|---|---|---|---|---|
+| Good (Dobrá) | 0 – 5 | 0 – 15 | 0 – 10 | 0 – 60 | `#87C159` |
+| Fair (Uspokojivá) | 5 – 15 | 15 – 45 | 10 – 25 | 60 – 100 | `#F4D35E` |
+| Moderate (Střední) | 15 – 50 | 45 – 120 | 25 – 60 | 100 – 120 | `#F48C42` |
+| Poor (Špatná) | 50 – 90 | 120 – 195 | 60 – 100 | 120 – 160 | `#E64A45` |
+| Very poor (Velmi špatná) | 90 – 140 | 195 – 270 | 100 – 150 | 160 – 180 | `#8C6AB6` |
+| Extremely poor (Extrémně špatná) | 140+ | 270+ | 150+ | 180+ | `#7D5963` |
+
+History: until 2.8.3 PM2.5 used US EPA (12/35.4/55.4/150.4/250.4) and PM10/NO₂/O₃ the 2017 EAQI
+(20/40/50/100/150, 40/90/120/230/340, 50/100/130/240/380). 2.8.4 moved all four to the revised EAQI.
 | No data | — | `#9ca3af` |
 
 **Popup structure:**
@@ -460,6 +463,32 @@ Git is for source-of-truth and history only. **Deploying to the shared hosting i
 ---
 
 ## 10. Changelog
+
+### Iteration 2.8 — Multi-pollutant map, interpolation, wind (2026-09-04, SANDBOX — not deployed)
+
+Ported from nosicheck.cz (same author), minus dark mode, fires, ČHMÚ alerts, forecast and citizen reports.
+
+- **Frontend split**: `map/index.html` + `map/embed.html` are now thin shells; logic lives in shared `map/app.js`, `interp.js`, `wind.js`, `info.js`, `style.css` (cache-busted with `?v=2.8`).
+- **Pollutant bar** (PM2.5 / PM10 / NO₂ / O₃ / 🔊 Hluk / ℹ): `POLLUTANTS` registry drives marker colors, legend bands, popup hero and history chart. EEA EAQI bands for PM2.5/PM10/NO₂/O₃ (PM2.5 switched from US EPA in 2.8.4), WHO dB(A) bands for noise. Limit lines = EU 2024/2881 daily limits (2030).
+- **Interpolation overlay** (`interp.js`): IDW power 2, trust weights ČHMÚ 1.0 > PurpleAir 0.25 > Smart Citizen 0.15 > Sensor.Community = Libčich 0.10, wind-advected anisotropic kernel, nothing painted > 25 km from a sensor, noise never interpolated, hidden networks excluded. On by default (`sv_interp`).
+- **Wind layer** (`wind.js` + leaflet-velocity 2.1.4): off by default, hourly refresh, hidden when grid > 3 h old.
+- **`wind-proxy.php`** (new): Open-Meteo 15×12 grid over CZ → leaflet-velocity JSON; 60-min self-refreshing cache in `cache/wind_latest.json` with flock, stale fallback; optional `?token=CRON_TOKEN` prebuild. No API key.
+- **Basemap**: CARTO `light_nolabels` + `light_only_labels` on a `labelsPane` (z 375) so labels read above the color field; switcher Světlá / Barevná / OSM (`sv_basemap`).
+- **ČHMÚ**: stations not measuring the active pollutant render hollow; PM10 now parsed alongside PM2.5/NO₂/O₃.
+- **Smart Citizen**: `sck-proxy.php` exposes noise (id 53); noise-only devices are kept.
+- **Libčich**: cluster bubble colored by the median of the active pollutant; layer disappears for NO₂/O₃/noise.
+- **`collect.php`**: stores SC PM10, ČHMÚ PM10/NO₂/O₃ (hour-deduped, `is_numeric` guard so an empty CSV cell never becomes 0.0), SCK PM10 + noise; `PROXY_BASE_URL` override for local runs; `str_getcsv` with explicit params (PHP 8.4+ deprecation).
+- **`get_history.php`**: `?type=` (whitelisted), 5-day time window, data-gap markers (`…|gap` null points, shaded in the chart), labels in Europe/Prague, staleness flag for Libčich as well as ČHMÚ, noise excluded from clog heuristics.
+- **Methodology modal** (`info.js`): networks + weights, pollutants, color scale, interpolation, wind, history chart.
+- **Mobile**: pollutant bar owns the top edge; `layoutLegend()` drops the legend below the bar only when they would overlap.
+- Verified locally (PHP 8.5 built-in server, port 8128): all five networks, pollutant switching, interpolation, wind, popups/charts per pollutant, modal, embed, mobile; collector run twice → hour dedupe confirmed.
+- **Round 2 (same day)** — ported three more nosicheck.cz features, still SANDBOX:
+  - **ČHMÚ air-quality warnings** (`alerts-proxy.php` + `lib/Alerts.php` + `map/alerts.js` + `map/orp-areas.js`): SIVS CAP bulletin, self-refreshing 10-min cache, output filtered to `cat = smog` (smog situation, dust, ozone, NO₂, SO₂). Slide-in banner on the left edge, auto-retracts to a tab after 5 s, click opens the full ČHMÚ text in the shared modal. Geolocation is requested only when a warning is in force; with a position only the visitor's ORP is shown, otherwise the national list.
+  - **ČHMÚ forecast in the popup chart** (`forecast-proxy.php` + `lib/Forecast.php`): KRAJ boxplot ZIPs (pure-PHP unzip), self-refreshing 30-min cache, curve anchored on the sensor's 3 h mean (else ČHMÚ observation map; clamp 0.33–3.0). Chart default = 24 h history (hourly MAX buckets via `get_history.php?hours=24&step=hour`) + 24 h outlook with "teď" divider, p25–p75 band and a one-line max/min note; "5 dní" switch keeps the raw 5-day view (`sv_chart_range`).
+  - **Sensor bans + auto quality flags** (`lib/SensorQuality.php`, `sensor-bans.php`, `admin/bans.php`): `sensor_bans` table in the history DB (seeded with the formerly hardcoded SC_46875/SC_7213 — no hardcoded list remains), token-gated admin page (ban/unban, community networks only, bare number ⇒ SC_), public list cached 10 min. Auto flags: 2 h flatness (stuck std<0.5 & mean>10; plateau std<3 & mean>60, ≥12 samples, PM only, never ČHMÚ) hide the sensor from markers AND interpolation, self-healing. `collect.php` skips manual bans.
+  - Mobile: pollutant bar content centered (auto margins on the edge chips, still scrollable when overflowing).
+  - Popup polish: header spans the full bubble width (Leaflet content margin reset), close button restyled as a round button inside the header, popup content bound as a DOM node so `popup.update()` after the chart loads re-runs autoPan without discarding the chart; autoPan padding keeps the bubble below the pollutant bar (and the collapsed legend on mobile) and left of the legend on desktop; mobile popup narrower with inner scroll and sticky header.
+  - Offline tests `tests/test_alerts.php`, `tests/test_forecast.php` (ALL PASS). Verified locally: alerts fetch (no smog warning in force today → empty list; banner verified with synthetic data), forecast build for 14 kraje with `anchor_src: sensor|chmi_map`, admin ban/unban round trip, ČHMÚ ban rejected.
 
 ### Iteration 1 — Core architecture
 - Designed and built SQLite + CRON history layer ("Time Machine")

@@ -1,0 +1,606 @@
+/* senzorvzduchu.cz — mapa 2.8 (multipollutant). Sdílené styly pro index.html i embed.html. */
+
+:root {
+    /* Brand */
+    --brand-primary: #21275F;
+    --brand-secondary: #3845A6;
+
+    /* UI */
+    --bg-light: #ffffff;
+    --text-dark: #111827;
+    --text-muted: #6b7280;
+    --text-faint: #999999;
+    --surface: #ffffff;
+    --surface-2: #f3f4f6;
+    --surface-3: #f9fafb;
+    --surface-brand: #EEF0FA;
+    --surface-translucent: rgba(255, 255, 255, 0.92);
+    --border-c: #e5e7eb;
+    --border-soft: #eeeeee;
+
+    /* AQI */
+    --aqi-good: #87C159;
+    --aqi-moderate: #F4D35E;
+    --aqi-sensitive: #F48C42;
+    --aqi-unhealthy: #E64A45;
+    --aqi-very-unhealthy: #8C6AB6;
+    --aqi-hazardous: #7D5963;
+    --aqi-no-data: #9ca3af;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-light);
+    color: var(--text-dark);
+    overflow: hidden;
+    position: relative;
+}
+
+#map {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    z-index: 1;
+    touch-action: manipulation;
+}
+
+/* ---------- Lišta látek ---------- */
+.pollutant-bar {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top)); left: 50%;
+    transform: translateX(-50%);
+    z-index: 1001;
+    display: flex; align-items: center; gap: 4px;
+    background: var(--surface);
+    padding: 5px;
+    border-radius: 22px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    max-width: calc(100vw - 20px);
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+}
+.pollutant-bar::-webkit-scrollbar { display: none; }
+.pollutant-chip {
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 7px 13px;
+    border-radius: 17px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.pollutant-chip:hover { background: var(--surface-2); }
+.pollutant-chip.active { background: var(--brand-primary); color: white; }
+.pollutant-chip.pollutant-info {
+    color: var(--brand-primary);
+    font-size: 14px;
+    padding: 7px 11px;
+    border-left: 1px solid var(--border-soft);
+    border-radius: 0 17px 17px 0;
+}
+
+/* ---------- Legenda ---------- */
+.legend {
+    position: fixed;
+    top: 10px; right: 10px;
+    background: var(--surface);
+    padding: 10px 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 150px;
+    border-left: 3px solid var(--brand-primary);
+}
+.legend-header {
+    display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
+    margin-bottom: 6px;
+}
+.legend-title {
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--brand-primary);
+}
+.legend-content { transition: max-height 0.3s ease; overflow: hidden; max-height: 600px; }
+.legend-content.collapsed { max-height: 0; }
+.legend-item { display: flex; align-items: center; margin: 4px 0; font-size: 10px; }
+.legend-color { width: 12px; height: 12px; border-radius: 3px; margin-right: 8px; }
+
+.legend-sources { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border-soft); }
+.legend-source-item {
+    display: flex; align-items: center;
+    margin: 3px 0; font-size: 9px;
+    color: var(--text-muted);
+    cursor: pointer; user-select: none;
+    transition: opacity 0.2s;
+}
+.legend-source-item.disabled { opacity: 0.35; text-decoration: line-through; }
+.legend-source-item.unavailable { opacity: 0.3; pointer-events: none; }
+.src-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; flex-shrink: 0;
+    background: #9ca3af;
+}
+.src-sc   { border: 1px solid #888; }
+.src-chmi { border: 2px solid #000; }
+.src-sck  { border: 1px dashed #555; }
+.src-pa   { border: 2px solid #7B2D8E; }
+.src-lib  { border: 2px solid #0E7C86; }
+.src-wind { background: linear-gradient(135deg, #93C5FD, #3B82F6); border: 1px solid #60A5FA; }
+.src-interp { background: linear-gradient(135deg, #87C159, #F4D35E, #E64A45); border: 1px solid #ccc; opacity: 0.7; }
+.legend-zoom {
+    margin-left: auto;
+    padding-left: 6px;
+    color: var(--brand-secondary);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Libčich cluster bublina (Leaflet.markercluster, jen libcich vrstva) */
+.libcich-cluster { background: transparent; border: none; }
+.libcich-cluster div {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    border: 2px solid #0E7C86;
+    display: flex; align-items: center; justify-content: center;
+    font: 600 12px 'Familjen Grotesk', sans-serif;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+.legend-basemap {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-soft);
+    font-size: 9px; color: var(--text-muted);
+}
+.basemap-btn {
+    border: 1px solid var(--border-c);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 9px; font-weight: 600;
+    padding: 3px 7px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.basemap-btn.active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: white;
+}
+
+.legend-info-link {
+    margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border-soft);
+    font-size: 10px; font-weight: 600;
+    color: var(--brand-primary);
+    cursor: pointer; user-select: none;
+}
+.legend-info-link:hover { text-decoration: underline; }
+
+/* Interpolační pole: silnice a voda prosvítají */
+.interp-overlay { mix-blend-mode: multiply; }
+
+/* ---------- Vítr (leaflet-velocity readout) ---------- */
+.leaflet-control-velocity {
+    background: var(--surface-translucent);
+    padding: 4px 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border-soft);
+    box-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+.leaflet-bottom.leaflet-right .leaflet-control-velocity { margin: 0 10px 8px 0; }
+
+/* ---------- Indikátor aktualizace ---------- */
+.update-indicator {
+    position: fixed;
+    bottom: 10px; left: 10px;
+    background: var(--surface);
+    padding: 6px 12px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    border: 1px solid var(--border-soft);
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 2px;
+}
+.update-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-muted); }
+.update-subtitle { font-size: 9px; color: var(--text-faint); margin-left: 16px; font-weight: 500; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand-secondary); }
+.status-dot.error { background: var(--aqi-unhealthy); }
+
+/* ---------- Popupy ---------- */
+.leaflet-popup-content-wrapper {
+    background: var(--surface);
+    color: var(--text-dark);
+    border-radius: 10px;
+    padding: 0;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    min-width: 250px;
+    overflow: hidden; /* hlavička kopíruje zaoblení rohů */
+}
+/* Leaflet dává obsahu okraj 13px/24px — hlavička musí jít až ke kraji bubliny */
+.leaflet-popup-content {
+    margin: 0;
+    line-height: 1.4;
+}
+.popup-header {
+    background: var(--surface-3);
+    padding: 11px 44px 11px 15px; /* vpravo místo pro × */
+    border-bottom: 1px solid var(--border-soft);
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-weight: 600; font-size: 14px;
+    line-height: 1.3;
+}
+/* Zavírací × uvnitř hlavičky, jako tlačítko. Plná brand barva: bílý kroužek
+   s šedým × na skoro bílé hlavičce na mobilu často splýval s pozadím. */
+.leaflet-container a.leaflet-popup-close-button {
+    top: 8px; right: 8px;
+    width: 26px; height: 26px;
+    padding: 0;
+    border-radius: 50%;
+    background: var(--brand-primary);
+    border: 1px solid var(--brand-primary);
+    color: #ffffff;
+    font: 600 18px/24px 'Inter', sans-serif;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    z-index: 2;
+}
+.leaflet-container a.leaflet-popup-close-button:hover {
+    background: var(--brand-secondary);
+    border-color: var(--brand-secondary);
+    color: white;
+}
+.popup-content-body { padding: 15px; }
+.popup-hero { text-align: center; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border-soft); }
+.popup-pm-value {
+    font-size: 32px; font-weight: 700; line-height: 1; margin-bottom: 4px;
+    font-family: 'Familjen Grotesk', sans-serif;
+}
+.popup-detail {
+    font-size: 12px; color: var(--text-muted);
+    margin: 4px 0;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.popup-detail.main-label { justify-content: center; color: var(--text-muted); font-size: 13px; }
+/* Ostatní veličiny: štítky vedle sebe, název u hodnoty */
+.popup-others { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.popup-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid var(--border-c); border-radius: 12px;
+    background: var(--surface-3);
+    font-size: 11px; color: var(--text-muted);
+    white-space: nowrap;
+}
+.popup-chip strong { color: var(--text-dark); font-weight: 600; }
+/* Štítek látky je tlačítko: přepne mapu i popup na tu látku */
+.popup-chip-link { cursor: pointer; font-family: inherit; }
+.popup-chip-link:hover { border-color: var(--brand-primary); background: var(--surface-brand); }
+.popup-chip-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.popup-source {
+    margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border-soft);
+    font-size: 10px; color: var(--text-faint);
+    text-transform: uppercase; letter-spacing: 0.5px;
+}
+.popup-source a { color: inherit; }
+.popup-quality {
+    display: none;
+    margin-bottom: 8px; padding: 5px 8px;
+    background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px;
+    font-size: 11px; color: #856404;
+}
+/* Box grafu má pevnou výšku ve všech stavech (načítání, 24 h, 5 dní), aby
+   popup neměnil velikost; stav se píše přes plátno. `empty` = bez dat. */
+.chart-container { position: relative; overflow: hidden; }
+.chart-container.loading canvas { visibility: hidden; }
+.chart-container.empty { height: 36px; }
+.chart-container.empty canvas { display: none; }
+.chart-status {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 10px; text-align: center;
+    font-size: 11px; color: var(--text-faint);
+}
+
+/* ---------- Modal (metodika) ---------- */
+.modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(17, 24, 39, 0.55);
+    z-index: 2000;
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px;
+}
+.modal {
+    background: var(--surface);
+    border-radius: 12px;
+    max-width: 460px;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    padding: 20px;
+}
+.modal h2 {
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 18px; color: var(--brand-primary);
+    margin-bottom: 14px;
+}
+.modal .btn-row { display: flex; gap: 8px; margin-top: 18px; }
+.btn {
+    flex: 1;
+    padding: 10px;
+    border: none; border-radius: 8px;
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+}
+.btn-primary { background: var(--brand-primary); color: white; }
+
+.info-lead {
+    font-size: 13px; line-height: 1.55;
+    background: var(--surface-brand);
+    border-left: 3px solid var(--brand-primary);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+}
+.info-sec { margin: 8px 0; border: 1px solid var(--border-c); border-radius: 8px; padding: 8px 10px; }
+.info-sec summary {
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    color: var(--text-dark);
+    cursor: pointer; user-select: none;
+}
+.info-sec[open] summary { color: var(--brand-primary); margin-bottom: 6px; }
+.info-sec p { font-size: 12px; line-height: 1.5; color: var(--text-muted); margin: 6px 0; }
+.info-sec a { color: var(--brand-primary); }
+.info-table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 6px 0; }
+.info-table th { text-align: left; color: var(--text-dark); padding: 3px 4px; border-bottom: 1px solid var(--border-c); }
+.info-table td { padding: 4px; border-bottom: 1px solid var(--border-soft); color: var(--text-muted); vertical-align: top; line-height: 1.4; }
+.info-legal {
+    margin-top: 16px; padding-top: 10px; border-top: 1px solid var(--border-soft);
+    font-size: 11px; line-height: 1.6; color: var(--text-muted);
+}
+.info-legal a { color: var(--brand-primary); text-decoration: none; }
+.info-legal a:hover { text-decoration: underline; }
+
+/* ---------- Toast ---------- */
+.toast {
+    position: fixed;
+    bottom: 60px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--brand-primary);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 3000;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    max-width: 90vw;
+    text-align: center;
+}
+.toast.error { background: var(--aqi-unhealthy); }
+
+/* ---------- Popup graf: přepínač rozsahu ---------- */
+.chart-container { height: 200px; margin-bottom: 8px; }
+.chart-range {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 6px;
+}
+.chart-range-btn {
+    border: 1px solid var(--border-c);
+    background: var(--surface);
+    color: var(--text-muted);
+    font-family: 'Inter', sans-serif;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+.chart-range-btn.active {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: white;
+}
+
+/* ---------- Výstraha ČHMÚ (alerts.js) ----------
+   Ukotvená k levému okraji uprostřed výšky — jediný volný pruh obrazovky
+   (lišta má horní okraj, legenda pravý, indikátor dolní). Dva stavy řízené z JS:
+   .open = karta vyjetá, .retracted = záložka. Bez třídy je obojí mimo plátno. */
+.nc-alert {
+    position: fixed;
+    left: 0;
+    top: 46%;
+    z-index: 1100;
+    --lvl: #eab308;
+    --lvl-soft: #fef9c3;
+}
+.nc-alert.lvl-3 { --lvl: #ea580c; --lvl-soft: #ffedd5; }
+.nc-alert.lvl-4 { --lvl: #dc2626; --lvl-soft: #fee2e2; }
+
+.nc-alert-card {
+    position: relative;
+    display: flex; align-items: flex-start; gap: 10px;
+    width: max-content;
+    max-width: min(330px, calc(100vw - 60px));
+    padding: 11px 32px 11px 12px;
+    background: var(--surface);
+    border-left: 5px solid var(--lvl);
+    border-radius: 0 14px 14px 0;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+    cursor: pointer;
+    transform: translateX(-108%);
+    opacity: 0;
+    transition: transform 0.62s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.35s ease;
+}
+.nc-alert.open .nc-alert-card { transform: translateX(0); opacity: 1; }
+.nc-alert-card:focus-visible { outline: 2px solid var(--brand-primary); outline-offset: 2px; }
+.nc-alert.is-smog .nc-alert-card {
+    background: linear-gradient(100deg, var(--lvl-soft) 0%, var(--surface) 65%);
+}
+.nc-alert-icon {
+    flex: 0 0 auto;
+    width: 30px; height: 30px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    background: var(--lvl-soft);
+    font-size: 17px; line-height: 1;
+}
+.nc-alert.lvl-4 .nc-alert-icon { animation: ncAlertPulse 2.4s ease-in-out 3; }
+@keyframes ncAlertPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.5); }
+    50%      { box-shadow: 0 0 0 7px rgba(220, 38, 38, 0); }
+}
+.nc-alert-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.nc-alert-kicker {
+    font-size: 9.5px; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--lvl);
+}
+.nc-alert-title {
+    font-family: 'Familjen Grotesk', sans-serif;
+    font-size: 14px; font-weight: 600; line-height: 1.25;
+    color: var(--text-dark);
+}
+.nc-alert-meta { font-size: 11px; color: var(--text-muted); }
+.nc-alert-more { font-size: 10.5px; font-weight: 600; color: var(--brand-primary); margin-top: 1px; }
+.nc-alert-x {
+    position: absolute; top: 3px; right: 3px;
+    width: 24px; height: 24px;
+    border: 0; border-radius: 6px;
+    background: transparent;
+    color: var(--text-faint);
+    font-size: 19px; line-height: 1;
+    cursor: pointer;
+}
+.nc-alert-x:hover { background: var(--surface-2); color: var(--text-dark); }
+.nc-alert-tab {
+    position: absolute; left: 0; top: 50%;
+    display: flex; align-items: center; gap: 3px;
+    padding: 7px 9px 7px 6px;
+    background: var(--surface);
+    border: 0; border-left: 4px solid var(--lvl);
+    border-radius: 0 11px 11px 0;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.2);
+    font-size: 15px; line-height: 1;
+    cursor: pointer;
+    transform: translate(-115%, -50%);
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nc-alert.retracted .nc-alert-tab { transform: translate(0, -50%); }
+.nc-alert-tab b { font-size: 10px; font-weight: 700; color: var(--lvl); }
+
+/* Detail v modalu */
+.nc-alert-scope { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+.nc-alert-item {
+    border-left: 4px solid var(--lvl);
+    background: var(--surface-3);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    --lvl: #eab308;
+}
+.nc-alert-item.lvl-3 { --lvl: #ea580c; }
+.nc-alert-item.lvl-4 { --lvl: #dc2626; }
+.nc-alert-item-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 14px; }
+.nc-alert-chip {
+    font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: #fff; background: var(--lvl);
+    padding: 2px 6px; border-radius: 999px;
+}
+.nc-alert-item-when { font-size: 11px; color: var(--text-muted); margin: 3px 0 6px; }
+.nc-alert-item p { font-size: 12px; line-height: 1.5; margin-bottom: 5px; color: var(--text-dark); }
+.nc-alert-instr, .nc-alert-where { color: var(--text-muted); }
+.nc-alert-src { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-top: 12px; }
+.nc-alert-src a { color: var(--brand-primary); }
+
+@media (prefers-reduced-motion: reduce) {
+    .nc-alert-card, .nc-alert-tab { transition-duration: 0.01ms; }
+    .nc-alert.lvl-4 .nc-alert-icon { animation: none; }
+}
+
+/* ---------- Mobil ---------- */
+@media (max-width: 768px) {
+    .pollutant-bar { left: 10px; right: 10px; transform: none; max-width: none; }
+    .pollutant-chip { font-size: 12px; padding: 7px 11px; }
+    /* Obsah lišty centrovaný, ale při přetečení stále posuvný (auto okraje
+       na krajních prvcích — justify-content:center by levý kraj ořízl) */
+    .pollutant-chip:first-child { margin-left: auto; }
+    .pollutant-chip:last-child { margin-right: auto; }
+
+    .nc-alert { top: 50%; }
+    .nc-alert-card { max-width: calc(100vw - 52px); padding: 10px 30px 10px 10px; }
+    .nc-alert-title { font-size: 13px; }
+    .nc-alert-meta { font-size: 10.5px; }
+
+    /* Popup: menší, s vnitřním scrollem, hlavička s × zůstává nahoře.
+       Šířku (minWidth) a odsazení autoPan od lišty nastavuje app.js. */
+    .leaflet-popup-content-wrapper { min-width: 0; border-radius: 9px; }
+    .leaflet-popup-content {
+        max-height: calc(100dvh - 130px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .popup-header {
+        position: sticky; top: 0; z-index: 1;
+        padding: 9px 44px 9px 12px;
+        font-size: 13px;
+    }
+    .leaflet-container a.leaflet-popup-close-button {
+        top: 5px; right: 5px;
+        width: 30px; height: 30px;
+        font: 600 19px/28px 'Inter', sans-serif;
+    }
+    .popup-content-body { padding: 10px 12px 12px; }
+    .popup-hero { padding-bottom: 8px; margin-bottom: 8px; }
+    .popup-pm-value { font-size: 26px; }
+    .popup-detail.main-label { font-size: 12px; }
+    .popup-detail { font-size: 11px; margin: 3px 0; }
+    .chart-container { height: 150px; }
+    .chart-range-btn { font-size: 10px; padding: 3px 7px; }
+    .popup-quality { font-size: 10px; }
+    .leaflet-top.leaflet-left .leaflet-control { margin-top: 52px; }
+    /* top nastavuje layoutLegend() v app.js; 62px je fallback bez JS */
+    .legend { top: 62px; right: 10px; left: auto; min-width: 120px; padding: 8px 10px; max-width: 60vw; }
+    .legend-content:not(.collapsed) { max-height: calc(100dvh - 140px); overflow-y: auto; }
+    .legend-title { font-size: 11px; }
+    .legend-item { font-size: 9px; margin: 3px 0; }
+    .legend-color { width: 10px; height: 10px; margin-right: 6px; }
+
+    .update-indicator {
+        bottom: calc(8px + env(safe-area-inset-bottom)); left: 8px;
+        flex-direction: row; align-items: center; gap: 5px;
+        padding: 4px 9px; border-radius: 10px;
+    }
+    .update-label { display: none; }
+    .update-row { font-size: 10px; gap: 5px; }
+    .update-subtitle { margin-left: 0; font-size: 9px; }
+    .update-subtitle::before { content: '· '; color: #d1d5db; }
+
+    .leaflet-bottom.leaflet-left .leaflet-control-velocity {
+        margin: 0 0 calc(40px + env(safe-area-inset-bottom)) 8px;
+        font-size: 10px;
+        max-width: 70vw;
+        white-space: normal;
+    }
+    .leaflet-bottom.leaflet-right .leaflet-control-attribution {
+        font-size: 9px;
+        background: var(--surface-translucent);
+    }
+}
