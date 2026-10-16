@@ -40,6 +40,23 @@ function fetchUrl($url) {
     return $response;
 }
 
+// 3.0: teplota a vlhkost (vrstva + graf). Čidlo v krytu senzoru na slunci jde
+// i přes 50 °C, pod -40 °C v ČR nebývá; RH 0–100 (orosené SHT/DHT visí na 100 %).
+// $check (dedupe podle measured_at) jen u zdrojů s časem ze zdroje (Libčich).
+function insertMeteo(PDOStatement $stmt, string $sensor_id, int $ts, $temp, $hum, array &$stats, ?PDOStatement $check = null): void {
+    foreach (['temperature' => [$temp, -40, 60], 'humidity' => [$hum, 0, 100]] as $type => [$v, $lo, $hi]) {
+        if ($v === null || $v === '' || !is_numeric($v)) continue;
+        $v = (float)$v;
+        if (!is_finite($v) || $v < $lo || $v > $hi) continue;
+        if ($check) {
+            $check->execute([$sensor_id, $type, $ts]);
+            if ($check->fetch()) continue;
+        }
+        $stmt->execute([$sensor_id, $ts, $type, $v]);
+        $stats['inserted']++;
+    }
+}
+
 // ==========================================
 // SECURITY CHECK
 // ==========================================
@@ -94,12 +111,31 @@ if ($sc_json) {
         $db->beginTransaction();
         $stmt = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
 
+        // 3.0: teplota/vlhkost je v Sensor.Community jiný čip (BME280/DHT22) se
+        // samostatným sensor ID na stejné location → přiřadit k prachovému senzoru
+        // podle location ID (stejně jako app.js).
+        $locEnv = [];
+        foreach ($data as $sensor) {
+            $lid = $sensor['location']['id'] ?? null;
+            if ($lid === null) continue;
+            foreach ($sensor['sensordatavalues'] as $val) {
+                if ($val['value_type'] === 'temperature') $locEnv[$lid]['temperature'] = $val['value'];
+                elseif ($val['value_type'] === 'humidity') $locEnv[$lid]['humidity'] = $val['value'];
+            }
+        }
+
+        // 3.0: sc-proxy vrací pro většinu senzorů DVA záznamy (dvě měření z posledních
+        // 5 min). Oba se dřív zapsaly se stejným time() → polovina řádků SC_ byla
+        // duplicitní (stejný senzor, stejný čas). Bere se první záznam senzoru v běhu.
+        $seenSc = [];
         foreach ($data as $sensor) {
             // Indoor filter
             if (isset($sensor['location']['indoor']) && $sensor['location']['indoor'] == 1) continue;
 
             $sensor_id = "SC_" . $sensor['sensor']['id'];
             if (isset($bannedSensors[$sensor_id])) continue;
+            if (isset($seenSc[$sensor_id])) continue;
+            $seenSc[$sensor_id] = true;
             
             foreach ($sensor['sensordatavalues'] as $val) {
                 $type = $val['value_type'];
@@ -119,6 +155,10 @@ if ($sc_json) {
                     $stats['inserted']++;
                 }
             }
+
+            // 3.0: teplota a vlhkost téže location
+            $env = isset($sensor['location']['id']) ? ($locEnv[$sensor['location']['id']] ?? null) : null;
+            if ($env) insertMeteo($stmt, $sensor_id, $timestamp, $env['temperature'] ?? null, $env['humidity'] ?? null, $stats);
         }
         $db->commit();
     } else {
@@ -258,6 +298,9 @@ if ($sck_json) {
                     $stats['inserted']++;
                 }
             }
+
+            // 3.0: teplota (ID 55) a vlhkost (ID 56)
+            insertMeteo($stmt, $sensor_id, $timestamp, $data['55'] ?? null, $data['56'] ?? null, $stats);
         }
         $db->commit();
     } else {
@@ -295,6 +338,9 @@ if ($pa_json) {
                     $stats['inserted']++;
                 }
             }
+
+            // 3.0: teplota (°C z pa-proxy) a vlhkost
+            insertMeteo($stmt, $sensor_id, $timestamp, $sensor['temperature'] ?? null, $sensor['humidity'] ?? null, $stats);
         }
         $db->commit();
     } else {
@@ -335,6 +381,9 @@ if ($ag_json) {
                     $stats['inserted']++;
                 }
             }
+
+            // 3.0: teplota a vlhkost (jen online senzory, stejně jako PM)
+            insertMeteo($stmt, $sensor_id, $timestamp, $sensor['temperature'] ?? null, $sensor['humidity'] ?? null, $stats);
         }
         $db->commit();
     } else {
@@ -389,6 +438,38 @@ if ($lib_json) {
         $db->commit();
     } else {
         echo "Warning: Libcich Proxy did not return valid JSON.\n";
+    }
+}
+
+// ==========================================
+// 5b. LIBCICH — teplota a vlhkost (živá data, 2min intervaly)
+// ==========================================
+// /api/aqi (hodinové průměry) teplotu ani vlhkost nenese; výchozí režim proxy
+// (poslední 2min interval, cache) ano. measured_at = ISO klíč intervalu →
+// dedupe stejně jako u hodinových PM (cron po 5 min, interval se opakuje).
+
+$url_libcich_live = defined('LIBCICH_PROXY_URL')
+    ? preg_replace('/[?&]mode=aqi\b/', '', LIBCICH_PROXY_URL)
+    : "$proxy_base/libcich-proxy.php";
+$lib_live_json = fetchUrl($url_libcich_live);
+if ($lib_live_json) {
+    $libLive = json_decode($lib_live_json, true);
+    if (is_array($libLive)) {
+        $db->beginTransaction();
+        $stmt  = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+        $check = $db->prepare("SELECT 1 FROM measurements WHERE sensor_id = ? AND value_type = ? AND measured_at = ? LIMIT 1");
+
+        foreach ($libLive as $sensor) {
+            if (empty($sensor['id']) || empty($sensor['measured_at'])) continue;
+            $sensor_id = "LIBCICH_" . $sensor['id'];
+            if (isset($bannedSensors[$sensor_id])) continue;
+            $ts = strtotime($sensor['measured_at']);
+            if ($ts === false) continue;
+            insertMeteo($stmt, $sensor_id, $ts, $sensor['temperature'] ?? null, $sensor['humidity'] ?? null, $stats, $check);
+        }
+        $db->commit();
+    } else {
+        echo "Warning: Libcich live Proxy did not return valid JSON.\n";
     }
 }
 

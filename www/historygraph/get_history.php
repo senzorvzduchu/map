@@ -3,6 +3,8 @@
 // Historie jedné látky pro graf v popupu (posledních 5 dní).
 // 2.8: ?type= (PM2.5 výchozí | PM10 | NO2 | O3 | noise), detekce výpadků dat
 // (null bod s příznakem "gap"), popisky v čase Europe/Prague, staleness i pro Libčich.
+// 3.0: ?type=temperature | humidity — hodinový slot bere PRŮMĚR (ne maximum),
+// heuristiky ucpání se na ně nepouštějí (konstantní noční teplota není porucha).
 
 header('Content-Type: application/json');
 
@@ -25,7 +27,7 @@ if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|AG_\d+|LIBCICH_[A-F0-9
 }
 
 $value_type = $_GET['type'] ?? 'PM2.5';
-if (!in_array($value_type, ['PM2.5', 'PM10', 'NO2', 'O3', 'noise'], true)) {
+if (!in_array($value_type, ['PM2.5', 'PM10', 'NO2', 'O3', 'noise', 'temperature', 'humidity'], true)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid value type']);
     exit;
@@ -43,6 +45,10 @@ if ($hours < 1 || $hours > $max_hours) {
     exit;
 }
 $hourly = ($_GET['step'] ?? '') === 'hour';
+// 3.0: u teploty/vlhkosti je hodinové maximum zkreslené (polední špička čidla
+// v krytu), slot proto bere průměr; u látek zůstává maximum (špička nesmí zmizet).
+$is_meteo = in_array($value_type, ['temperature', 'humidity'], true);
+$slot_agg = $is_meteo ? 'AVG' : 'MAX';
 
 // 2. Databáze
 try {
@@ -58,7 +64,7 @@ try {
     if ($hourly) {
         $slot0 = intdiv(time(), 3600) * 3600 - ($hours - 1) * 3600;
         $stmt = $db->prepare("
-            SELECT (measured_at / 3600) * 3600 AS slot, MAX(value) AS value
+            SELECT (measured_at / 3600) * 3600 AS slot, $slot_agg(value) AS value
             FROM measurements
             WHERE sensor_id = ? AND value_type = ? AND measured_at >= ?
             GROUP BY slot ORDER BY slot ASC
@@ -66,7 +72,7 @@ try {
         $stmt->execute([$sensor_id, $value_type, $slot0]);
         $by_slot = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $by_slot[(int)$row['slot']] = (float)$row['value'];
+            $by_slot[(int)$row['slot']] = round((float)$row['value'], 1);
         }
         $rows = [];
         for ($i = 0; $i < $hours; $i++) {
@@ -138,7 +144,7 @@ try {
 
     // Heuristiky ucpání jsou µg/m³ pro optické prachové senzory — ne pro dB(A)
     // ani referenční analyzátory.
-    if (!$is_chmi && $value_type !== 'noise' && $n >= 6) {
+    if (!$is_chmi && $value_type !== 'noise' && !$is_meteo && $n >= 6) {
         $mean = array_sum($recent) / $n;
         $variance = array_sum(array_map(fn($v) => ($v - $mean) ** 2, $recent)) / $n;
         $std_dev = sqrt($variance);
@@ -171,7 +177,7 @@ try {
         'data' => $data,
         'step' => $hourly ? 3600 : null,
         't0' => ($hourly && $rows) ? (int)$rows[0]['measured_at'] : null,
-        'bucket' => $hourly ? 'max' : null,
+        'bucket' => $hourly ? ($is_meteo ? 'avg' : 'max') : null,
         'quality' => $quality
     ]);
 

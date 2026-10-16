@@ -52,8 +52,8 @@ and an inline `<style>` block of compact overrides in `embed.html`.
 - Fetchers normalize into `sensorStore`; `renderSensor()` draws per
   `activePollutant`. ČHMÚ stations without the active pollutant render hollow;
   community sensors without it are hidden. Noise is never interpolated.
-- Stored `value_type`s in SQLite: `PM2.5`, `PM10`, `NO2`, `O3`, `noise`.
-  `get_history.php?type=` is whitelisted to exactly these.
+- Stored `value_type`s in SQLite: `PM2.5`, `PM10`, `NO2`, `O3`, `noise`, and since 3.0
+  `temperature`, `humidity`. `get_history.php?type=` is whitelisted to exactly these.
 - Interpolation trust weights (`TRUST` in `interp.js`) are duplicated in the
   Czech text of `info.js` by design — change both.
 - Wind grid: `www/wind-proxy.php` (Open-Meteo, self-refreshing 60-min cache in
@@ -62,6 +62,30 @@ and an inline `<style>` block of compact overrides in `embed.html`.
   `location.pathname`, own key `sv_interp_embed` so the two never share state).
 - Persisted UI state (localStorage): `sv_pollutant`, `sv_interp` / `sv_interp_embed`, `sv_basemap`,
   `sv_chart_range`.
+
+## 🌡 Temperature & humidity (3.0)
+
+- `temperature` and `humidity` are ordinary `POLLUTANTS` entries with extra flags:
+  `colors` (own palette, NOT the EAQI green→purple), `openLow` (legend starts with
+  "< 0"), `valid: [lo, hi]` (values outside are treated as missing — `plausible()` in
+  app.js, same limits in `collect.php`; dead DHT22s report −14x °C), `meteo: true`
+  (no forecast, no gradient fill, y-axis not anchored at 0, ČHMÚ hidden instead of
+  hollow), `decimals` (hero + tooltip), `chartMin`/`chartMax` nullable.
+- `interp: false` on purpose: enclosure heating makes sun-exposed sensors read
+  5–25 °C high; an interpolated field would be a field of sensor errors.
+- History: hourly slots use AVG for the two meteo types (MAX for pollutants), and the
+  stuck/plateau heuristics skip them. Libčich T/RH come from the proxy's default
+  (2-min) mode, not `?mode=aqi`. Sensor.Community T/RH are attached to the PM sensor
+  by `location.id` (separate BME280/DHT22 sensor id), both in app.js and collect.php.
+- `collect.php` stores one record per SC sensor per run (`$seenSc`); the proxy returns
+  two readings per sensor and before 3.0 both were written with the same `time()`.
+- `pa-proxy.php` applies the US EPA PurpleAir sensor offsets (−8 °F, +4 % RH) AFTER
+  the Barkjohn PM2.5 correction, which must keep the raw RH.
+- The chip bar has 7 chips + ℹ: on phones it scrolls; `updatePollutantChips()` scrolls
+  the active chip into view.
+- ČHMÚ open data has 10-min T/RH for ~950 stations (`opendata.chmi.cz/meteorology/
+  climate/now/`), one JSON per station per day — too heavy to poll fully from Active24;
+  a city subset is a possible later version.
 
 ## 🔁 Self-refreshing proxies (no CLI cron on Active24)
 

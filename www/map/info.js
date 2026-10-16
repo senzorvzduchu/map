@@ -11,7 +11,7 @@ function openInfoModal() {
 
         <div class="info-lead">
             Mapa spojuje pět senzorových sítí do jednoho pohledu na kvalitu ovzduší
-            v ČR. Lišta nahoře přepíná látku (PM2.5, PM10, NO₂, O₃, hluk), barva
+            v ČR. Lišta nahoře přepíná veličinu (PM2.5, PM10, NO₂, O₃, hluk, teplota, vlhkost), barva
             senzoru odpovídá aktuální hodnotě, kliknutím se otevře graf s historií a výhledem.
             Barevná plocha mezi senzory je interpolace.
         </div>
@@ -20,7 +20,7 @@ function openInfoModal() {
             <summary>📡 Senzorové sítě</summary>
             <table class="info-table">
                 <tr><th>Síť</th><th>Co to je</th><th>Váha</th></tr>
-                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko.</td><td>1.0</td></tr>
+                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Teplotu a vlhkost z ČHMÚ tato mapa zatím nebere, při jejich volbě se stanice skryjí.</td><td>1.0</td></tr>
                 <tr><td><strong>PurpleAir</strong></td><td>Komunitní optické senzory. Hodnoty PM2.5 jsou korigované vzorcem US EPA (Barkjohn 2021).</td><td>0.25</td></tr>
                 <tr><td><strong>Smart Citizen</strong></td><td>Open-source stanice (Fab Lab Barcelona). Jediná síť s měřením <strong>hluku</strong> (MEMS mikrofon, dB(A)).</td><td>0.15</td></tr>
                 <tr><td><strong>Sensor.Community</strong></td><td>Největší DIY síť v ČR — levné optické senzory PM2.5/PM10, které si lidé staví sami.</td><td>0.10</td></tr>
@@ -46,6 +46,14 @@ function openInfoModal() {
             rozkládá NO z dopravy; měří jej jen stanice ČHMÚ.</p>
             <p><strong>Hluk</strong> — dB(A) ze stanic Smart Citizen. Hodnota platí
             pro nejbližší okolí stanice.</p>
+            <p><strong>Teplota a vlhkost</strong> — z čidel komunitních senzorů
+            (Sensor.Community, PurpleAir, Smart Citizen, Libčich, AirGradient).
+            Čidlo sedí v krytu senzoru, ne v meteorologické budce: na slunci
+            ukazuje o několik °C víc, u PurpleAir odečítáme výrobcem
+            dokumentovaných 4,4&nbsp;°C a přičítáme 4&nbsp;% vlhkosti. Vlhkost
+            95–100&nbsp;% bývá orosené čidlo. Hodnoty jsou orientační; ukazují
+            rozdíly mezi místy (tepelný ostrov města, inverze, mlha) a vlhkost,
+            při které optické prachové senzory nadhodnocují PM.</p>
         </details>
 
         <details class="info-sec">
@@ -54,6 +62,9 @@ function openInfoModal() {
             ovzduší EEA (EAQI) po revizi z roku 2024, hodinové hodnoty; první
             dvě třídy odpovídají doporučením WHO 2021. Hluková pásma vycházejí
             z doporučení WHO pro hluk v prostředí.</p>
+            <p>Teplota a vlhkost nemají zdravotní třídy, proto mají vlastní barvy:
+            teplota modrá → červená s hranicemi 0, 10, 20, 25 a 30&nbsp;°C,
+            vlhkost okrová → modrá s hranicemi 30, 50, 70, 85 a 95&nbsp;%.</p>
             <p>Čárkovaná čára v grafu je denní limit směrnice EU 2024/2881 platný
             od roku 2030: PM2.5 25, PM10 45, NO₂ 50&nbsp;µg/m³ (24 h), O₃ 120&nbsp;µg/m³
             (8h průměr). Graf ukazuje kratší průměry, čára je orientační.</p>
@@ -73,7 +84,7 @@ function openInfoModal() {
             po větru (až 2× při silném větru) a zkracuje proti větru. Za bezvětří
             je odhad kruhový.</p>
             <p>Dál než <strong>25&nbsp;km od nejbližšího senzoru se nekreslí nic</strong>
-            (po větru až ~50&nbsp;km). Hluk se neinterpoluje. Sítě vypnuté v legendě
+            (po větru až ~50&nbsp;km). Hluk, teplota ani vlhkost se neinterpolují. Sítě vypnuté v legendě
             se do odhadu nezapočítávají. Vrstvu vypnete v legendě („Interpolace").</p>
         </details>
 
@@ -92,7 +103,8 @@ function openInfoModal() {
             přepínač „5 dní" ukáže surové body za pět dní bez předpovědi.
             V 24h pohledu je jeden bod za hodinu. Z 5minutových měření dané
             hodiny se bere <strong>nejvyšší</strong>, ne průměr, aby krátká
-            špička v grafu zůstala.</p>
+            špička v grafu zůstala. U teploty a vlhkosti je to naopak průměr
+            hodiny.</p>
             <p>Komunitní senzory ukládáme každých 5 minut, ČHMÚ a Libčich jako
             hodinové průměry. Šedý pruh v grafu je výpadek dat. Popup upozorní,
             když senzor dlouhodobě hlásí konstantní hodnotu (možné ucpání) nebo
@@ -103,7 +115,7 @@ function openInfoModal() {
             <summary>🔮 Předpověď (výhled v grafu)</summary>
             <p>Pravá polovina grafu je <strong>modelová předpověď ČHMÚ</strong>
             na 24 hodin z otevřených dat ČHMÚ (pro každý kraj, pro PM2.5, PM10,
-            NO₂ a O₃). Hluk se nepředpovídá.</p>
+            NO₂ a O₃). Hluk, teplota ani vlhkost se nepředpovídají.</p>
             <p><strong>Proč předpověď přepočítáváme.</strong> ČHMÚ publikuje
             hodnotu za celý kraj — medián přes celé území včetně lesů a polí.
             Městský senzor proto skoro vždy měří víc, než říká krajské číslo,

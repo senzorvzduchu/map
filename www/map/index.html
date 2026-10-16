@@ -12,7 +12,7 @@
     <meta property="og:locale" content="cs_CZ">
     <meta property="og:url" content="https://senzorvzduchu.cz/map/">
     <meta property="og:title" content="Mapa kvality ovzduší v ČR – Senzorvzduchu.cz">
-    <meta property="og:description" content="Největší sjednocená mapa kvality ovzduší v ČR. Spojuje 6 sítí senzorů (Sensor.Community, ČHMÚ, PurpleAir, Smart Citizen, Libčich, AirGradient) – PM2.5, PM10, NO₂, O₃ a hluk, interpolace, vítr a pětidenní historie.">
+    <meta property="og:description" content="Největší sjednocená mapa kvality ovzduší v ČR. Spojuje 6 sítí senzorů (Sensor.Community, ČHMÚ, PurpleAir, Smart Citizen, Libčich, AirGradient) – PM2.5, PM10, NO₂, O₃, hluk, teplota a vlhkost, interpolace, vítr a pětidenní historie.">
     <meta property="og:image" content="https://senzorvzduchu.cz/map/OG-card-image-mapa-web.jpg">
     <meta property="og:image:alt" content="Mapa kvality ovzduší v České republice – Senzorvzduchu.cz">
 
@@ -34,7 +34,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=2.9">
+    <link rel="stylesheet" href="style.css?v=3.0">
 </head>
 
 <body>
@@ -42,12 +42,14 @@
     <div id="map"></div>
 
     <!-- Lišta látek (app.js; ℹ v info.js) -->
-    <div class="pollutant-bar" id="pollutantBar" role="tablist" aria-label="Výběr znečišťující látky">
+    <div class="pollutant-bar" id="pollutantBar" role="tablist" aria-label="Výběr veličiny">
         <button class="pollutant-chip" data-pollutant="pm25">PM2.5</button>
         <button class="pollutant-chip" data-pollutant="pm10">PM10</button>
         <button class="pollutant-chip" data-pollutant="no2">NO₂</button>
         <button class="pollutant-chip" data-pollutant="o3">O₃</button>
         <button class="pollutant-chip" data-pollutant="noise">🔊 Hluk</button>
+        <button class="pollutant-chip" data-pollutant="temperature">🌡 Teplota</button>
+        <button class="pollutant-chip" data-pollutant="humidity">💧 Vlhkost</button>
         <button class="pollutant-chip pollutant-info" id="infoChip" title="Jak mapa funguje">ℹ</button>
     </div>
 
@@ -102,10 +104,10 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
 
-    <script src="app.js?v=2.9"></script>
-    <script src="interp.js?v=2.9"></script>
+    <script src="app.js?v=3.0"></script>
+    <script src="interp.js?v=3.0"></script>
     <script src="wind.js?v=2.8"></script>
-    <script src="info.js?v=2.9"></script>
+    <script src="info.js?v=3.0"></script>
     <script src="alerts.js?v=2.8"></script>
 </body>
 

@@ -1,3 +1,13 @@
+# 3.0-meteo — Lokální testování (sandbox)
+
+> Stav 3.0: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `2.9-airgradient`;
+> původní verze změněných souborů: `backup-2.9/`.
+> Server 3.0: `.claude/launch.json` → `meteo-sandbox`, port **8130** (8129 = 2.9, 8128 = 2.8).
+> Kolektor lokálně: stejný příkaz jako níže s `PROXY_BASE_URL` = `http://127.0.0.1:8130`.
+> Co testovat očima: lišta „🌡 Teplota" / „💧 Vlhkost" (ČHMÚ zmizí, Interpolace zešedne,
+> legenda od „< 0"), popup (hero, štítek druhé veličiny s tečkou, graf „24 hodin" bez výhledu,
+> „5 dní"), mobil (lišta se posouvá, aktivní čip v záběru), embed. Podrobně `DEPLOY_3.0.md` §2, §6.
+
 # 2.9-airgradient — Lokální testování (sandbox)
 
 > Stav 2.9: **AirGradient nasazen 16. 10. 2026 ~16:00 a živě ověřen** (`DEPLOY_2.9.md` §7).

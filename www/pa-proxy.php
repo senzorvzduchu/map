@@ -143,7 +143,12 @@ foreach ($response['data'] as $row) {
     }
 
     // Teplota: Fahrenheit → Celsius
-    $tempC = ($tempF !== null) ? round(($tempF - 32) * 5 / 9, 1) : null;
+    // 3.0: čidlo PurpleAir sedí u elektroniky a čte systematicky výš; US EPA na
+    // své mapě odečítá 8 °F (4,4 °C) a přičítá 4 % RH (Barkjohn et al. 2021,
+    // EPA AirNow Fire & Smoke Map). Stejná oprava zde, ať PA nesvítí jako
+    // tepelný ostrov mezi sousedy.
+    $tempC = ($tempF !== null) ? round(($tempF - 8 - 32) * 5 / 9, 1) : null;
+    if ($humidity !== null) $humidity = min(100, $humidity + 4);
 
     $sensors[] = [
         'id'         => $sensorIndex,

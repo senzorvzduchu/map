@@ -1,7 +1,9 @@
-# senzorvzduchu.cz — Air Quality Map (2.9 — AirGradient, PRODUCTION since 2026-10-16)
+# senzorvzduchu.cz — Air Quality Map (3.0 — temperature & humidity, SANDBOX; 2.9 in production since 2026-10-16)
 
 Real-time air quality monitoring map for the Czech Republic. Aggregates data from six sources into a unified interactive Leaflet map with 5-day historical charts.
 
+> **Version 3.0 (sandbox, verified locally 2026-10-16):** temperature and humidity as two more entries in the pollutant bar — ~160 community sensors (Sensor.Community, PurpleAir, Smart Citizen, Libčich, AirGradient; ČHMÚ hidden), own colour scales (blue→red, ochre→blue), 5-day history chart (hourly means), implausible readings (dead DHT22 at −14x °C) hidden, PurpleAir sensor offset (−8 °F / +4 % RH), no interpolation (enclosure heating). Also: one Sensor.Community record per sensor per collector run (halves SC rows). See `DEPLOY_3.0.md`, `MIGRATION.md`.
+>
 > **Version 2.9 (deployed 2026-10-16, verified live):** sixth network **AirGradient** (public world feed, no key; `ag-proxy.php` + `lib/AirGradient.php`, CZ bbox filter, 3-min self-refreshing cache, grey marker for readings 30 min–2 h old, CO₂ chip, CC BY-SA 4.0 attribution, history via `collect.php`). See `DEPLOY_2.9.md`, `MIGRATION.md`.
 >
 > **Version 2.8 (deployed 2026-09-04, 2.8.7 on 2026-09-09):** multi-pollutant map ported from nosicheck.cz — pollutant bar (PM2.5 / PM10 / NO₂ / O₃ / noise), IDW interpolation overlay with wind advection, animated wind layer (Open-Meteo), methodology modal, label tiles above the color field, ČHMÚ air-quality warnings (slide-in banner), ČHMÚ forecast in the popup chart (24 h + 24 h outlook / 5 days), sensor bans + auto quality flags. Frontend split into shared `map/*.js` + `style.css`. See `TESTING.md` and `MIGRATION.md`. Production is 2.7 (CARTO key).

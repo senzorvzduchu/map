@@ -1,3 +1,26 @@
+# 3.0 — teplota a vlhkost (sandbox, ověřeno lokálně 16. 10. 2026)
+
+Výchozí bod: `2.9-airgradient` (LIVE od 16. 10. 2026). Původní verze změněných souborů:
+`backup-2.9/`. Runbook: `DEPLOY_3.0.md`.
+
+## Změněné soubory (3.0, 16. 10. 2026)
+
+| Soubor | Změna |
+|---|---|
+| `www/historygraph/collect.php` | `insertMeteo()` (meze −40…60 °C, 0…100 %); SC: teplota/vlhkost podle `location.id` + jeden záznam na senzor a běh (`$seenSc`, dřív 2× stejný čas); SCK ID 55/56; PA; AG (jen online); blok **5b Libčich** z výchozího režimu proxy (2min, dedupe `measured_at`) |
+| `www/historygraph/get_history.php` | whitelist `temperature`, `humidity`; hodinový slot AVG (látky MAX), `bucket: avg`; heuristiky stuck/plateau se na meteo nepouštějí |
+| `www/pa-proxy.php` | teplota −8 °F, vlhkost +4 % (US EPA offset čidla PurpleAir), až PO Barkjohn korekci PM2.5 |
+| `www/map/app.js` | `TEMP_COLORS`/`HUM_COLORS`; registr `temperature` (pásma 0/10/20/25/30, `openLow`, `valid`) + `humidity` (30/50/70/85/95, `decimals: 0`), oba `interp:false, meteo:true`; `plausible()` (marker, štítek, cluster Libčich); `colorFor` + legenda berou `cfg.colors`; ČHMÚ u meteo skryto; hero/tooltip `cfg.decimals`; graf bez výhledu, jednobarevná výplň, osa bez nuly; `updatePollutantChips()` posune aktivní čip do záběru |
+| `www/map/info.js` | odstavec „Teplota a vlhkost" (čidlo v krytu, PA korekce, 100 % = orosené), věta o barvách, průměr v grafu, ČHMÚ skryto, „neinterpolují / nepředpovídají" |
+| `www/map/index.html`, `embed.html` | čipy `temperature`, `humidity`; `aria-label` „Výběr veličiny"; meta „…hluk, teplota a vlhkost…"; `?v=3.0` |
+| `.claude/launch.json` (kořen) | `meteo-sandbox`, port 8130 |
+
+Rozhodnutí a důvody v `DEPLOY_3.0.md` §3 (plná vrstva místo „jen graf", vlastní barvy, bez
+interpolace kvůli ohřevu krytů, ČHMÚ skryto — otevřená data ČHMÚ mají 10min T/RH pro ~950
+stanic, ale jeden soubor na stanici a den).
+
+---
+
 # 2.9 — AirGradient (nasazeno 16. 10. 2026)
 
 Výchozí bod: `2.8-multipollutant` (LIVE 2.8.7 od 9. 9. 2026). Původní verze změněných souborů:

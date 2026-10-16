@@ -1,6 +1,8 @@
 /**
  * senzorvzduchu.cz — mapa 2.8: jádro (sítě, markery, historie).
  * Sdílený soubor pro index.html i embed.html.
+ * 3.0: teplota a vlhkost jako plnohodnotné „látky" v POLLUTANTS (vlastní barvy,
+ * otevřený spodní okraj škály, bez interpolace, bez výhledu, ČHMÚ skryto).
  *
  * Multipollutant model (převzato z nosicheck.cz, rozšířeno o Libčich):
  *  - POLLUTANTS = registr látek (pásma, barvy, poloměr, graf, interpolace)
@@ -27,6 +29,14 @@ const BAND_COLORS = ['#87C159', '#F4D35E', '#F48C42', '#E64A45', '#8C6AB6', '#7D
 const NO_DATA_COLOR = '#9ca3af';
 // Názvy tříd EEA EAQI (Good / Fair / Moderate / Poor / Very poor / Extremely poor)
 const BAND_LABELS_AQ = ['Dobrá', 'Uspokojivá', 'Střední', 'Špatná', 'Velmi špatná', 'Extrémně špatná'];
+
+// 3.0: teplota a vlhkost nejsou zdravotní třídy, proto vlastní barvy místo škály
+// EAQI (zelená = „dobrá" by u 15 °C nedávala smysl). Teplota modrá → červená,
+// hranice 0/10/20/25/30 °C (30 °C ≈ práh výstrah ČHMÚ na vysoké teploty).
+// Vlhkost okrová → modrá, hranice 30/50/70/85/95 % (nad ~70 % optické prachové
+// senzory nadhodnocují PM, 95+ = mlha/rosa, orosené čidlo visí na 100 %).
+const TEMP_COLORS = ['#2C5AA0', '#5AA7E0', '#F4D35E', '#F48C42', '#E64A45', '#8E1B2E'];
+const HUM_COLORS  = ['#C9A66B', '#D9D28F', '#9FD1C7', '#5FB3D9', '#2F7FC1', '#1B4F8A'];
 
 // Limitní čáry v grafu = denní limity směrnice (EU) 2024/2881 platné od 2030
 // (PM2.5 25, PM10 45, NO2 50 µg/m³ za 24 h; O3 120 µg/m³ max. 8h průměr).
@@ -72,6 +82,29 @@ const POLLUTANTS = {
         chartMax: 90, limitLine: null,
         interp: false, // hluk je hyperlokální — interpolace by vymýšlela data
     },
+    // 3.0: meteo veličiny. `meteo: true` = bez výhledu, ČHMÚ se skryje (na této
+    // mapě teplotu nedodává), graf bez gradientu a bez nuly jako spodku osy.
+    // `openLow` = první pásmo je „< 0", ne „0 - 0". `decimals` = hero i tooltip.
+    temperature: {
+        label: '🌡 Teplota', short: 'Teplota', unit: '°C', apiType: 'temperature',
+        bands: [0, 10, 20, 25, 30],
+        bandLabels: ['Mráz', 'Chladno', 'Mírně', 'Příjemně', 'Teplo', 'Horko'],
+        colors: TEMP_COLORS, openLow: true, valid: [-40, 60],
+        heroLabel: 'Teplota vzduchu',
+        radius: v => 8 + Math.max(0, Math.min((v + 5) / 4, 10)),
+        chartMax: null, chartMin: null, limitLine: null,
+        interp: false, meteo: true,
+    },
+    humidity: {
+        label: '💧 Vlhkost', short: 'Vlhkost', unit: '%', apiType: 'humidity',
+        bands: [30, 50, 70, 85, 95],
+        bandLabels: ['Sucho', 'Nízká', 'Střední', 'Vysoká', 'Vlhko', 'Nasyceno'],
+        colors: HUM_COLORS, decimals: 0, valid: [0, 100],
+        heroLabel: 'Relativní vlhkost',
+        radius: v => 8 + Math.max(0, Math.min((v - 20) / 8, 10)),
+        chartMax: 100, chartMin: 0, limitLine: null,
+        interp: false, meteo: true,
+    },
 };
 
 const NETWORK_LABELS = {
@@ -87,13 +120,24 @@ const NETWORK_LABELS = {
 let activePollutant = localStorage.getItem('sv_pollutant');
 if (!POLLUTANTS[activePollutant]) activePollutant = 'pm25';
 
+/** Hodnota mimo fyzikálně možný rozsah (`valid` v registru, např. -147 °C z vadného
+ *  DHT22 v Sensor.Community) se bere jako žádná hodnota: marker se skryje, štítek
+ *  v popupu se nevypíše. collect.php má stejné meze. Látky bez `valid` projdou. */
+function plausible(pollutant, value) {
+    const cfg = POLLUTANTS[pollutant];
+    if (!cfg || !cfg.valid) return true;
+    return value >= cfg.valid[0] && value <= cfg.valid[1];
+}
+
 function colorFor(pollutant, value) {
     if (value === null || value === undefined || isNaN(value)) return NO_DATA_COLOR;
-    const bands = POLLUTANTS[pollutant].bands;
+    const cfg = POLLUTANTS[pollutant];
+    const bands = cfg.bands;
+    const colors = cfg.colors || BAND_COLORS;
     for (let i = 0; i < bands.length; i++) {
-        if (value <= bands[i]) return BAND_COLORS[i];
+        if (value <= bands[i]) return colors[i];
     }
-    return BAND_COLORS[bands.length];
+    return colors[bands.length];
 }
 
 /** Escapování řetězců třetích stran (názvy zařízení) před vložením do HTML. */
@@ -221,7 +265,7 @@ window.addEventListener('load', function () {
                 iconCreateFunction: function (cluster) {
                     const vals = cluster.getAllChildMarkers()
                         .map(m => sensorStore.get(m.options.sensorId)?.values[activePollutant])
-                        .filter(v => v !== null && v !== undefined && !isNaN(v));
+                        .filter(v => v !== null && v !== undefined && !isNaN(v) && plausible(activePollutant, v));
                     const med = vals.length ? medianOf(vals) : null;
                     return L.divIcon({
                         html: `<div style="background:${colorFor(activePollutant, med)}">${cluster.getChildCount()}</div>`,
@@ -365,7 +409,11 @@ function setPollutant(key) {
 
 function updatePollutantChips() {
     document.querySelectorAll('.pollutant-chip[data-pollutant]').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.pollutant === activePollutant);
+        const active = btn.dataset.pollutant === activePollutant;
+        btn.classList.toggle('active', active);
+        // 3.0: osm čipů se na mobil nevejde, lišta se posouvá — aktivní čip
+        // (např. Vlhkost z popupu nebo z localStorage) nesmí zůstat mimo displej.
+        if (active && btn.scrollIntoView) btn.scrollIntoView({ block: 'nearest', inline: 'center' });
     });
 }
 
@@ -374,12 +422,15 @@ function renderLegendBands() {
     document.getElementById('legendTitle').textContent = `${cfg.short} (${cfg.unit})`;
     const holder = document.getElementById('legendBands');
     let html = '';
+    const colors = cfg.colors || BAND_COLORS;
     let prev = 0;
     cfg.bands.forEach((b, i) => {
-        html += `<div class="legend-item"><div class="legend-color" style="background:${BAND_COLORS[i]}"></div><span>${prev} - ${b} (${cfg.bandLabels[i]})</span></div>`;
+        // Teplota jde pod nulu: první řádek je „< 0", ne „0 - 0".
+        const range = (i === 0 && cfg.openLow) ? `< ${b}` : `${prev} - ${b}`;
+        html += `<div class="legend-item"><div class="legend-color" style="background:${colors[i]}"></div><span>${range} (${cfg.bandLabels[i]})</span></div>`;
         prev = b;
     });
-    html += `<div class="legend-item"><div class="legend-color" style="background:${BAND_COLORS[cfg.bands.length]}"></div><span>${prev}+ (${cfg.bandLabels[cfg.bands.length]})</span></div>`;
+    html += `<div class="legend-item"><div class="legend-color" style="background:${colors[cfg.bands.length]}"></div><span>${prev}+ (${cfg.bandLabels[cfg.bands.length]})</span></div>`;
     holder.innerHTML = html;
 }
 
@@ -803,15 +854,15 @@ const VALUE_LABELS = {
 function renderSensor(rec) {
     const cfg = POLLUTANTS[activePollutant];
     const rawVal = rec.values[activePollutant];
-    const val = (rawVal === undefined || rawVal === null || isNaN(rawVal)) ? null : rawVal;
+    const val = (rawVal === undefined || rawVal === null || isNaN(rawVal) || !plausible(activePollutant, rawVal)) ? null : rawVal;
     const isChmi = rec.network === 'chmi';
     const group = window.layers[rec.network] || map;
     let marker = markers.get(rec.id);
 
     // Stanice ČHMÚ, které aktivní látku neměří, zůstávají viditelné (prázdné
     // kolečko) — oficiální síť má být vidět. Komunitní senzory bez hodnoty se
-    // skryjí. Hluk ČHMÚ neměří vůbec → skrýt.
-    const showHollow = isChmi && val === null && activePollutant !== 'noise';
+    // skryjí. Hluk, teplotu ani vlhkost ČHMÚ na této mapě nedodává → skrýt.
+    const showHollow = isChmi && val === null && activePollutant !== 'noise' && !cfg.meteo;
     if (val === null && !showHollow) {
         if (marker && group.hasLayer(marker)) group.removeLayer(marker);
         return;
@@ -830,7 +881,7 @@ function renderSensor(rec) {
     if (val !== null) {
         popupHtml += `
             <div class="popup-pm-value" style="color: ${color}">
-                ${val.toFixed(1)} <span style="font-size:16px; color:#666">${cfg.unit}</span>
+                ${val.toFixed(cfg.decimals ?? 1)} <span style="font-size:16px; color:#666">${cfg.unit}</span>
             </div>
             <div class="popup-detail main-label">${cfg.heroLabel}</div>`;
         if (isStale) {
@@ -845,7 +896,8 @@ function renderSensor(rec) {
     popupHtml += `</div>`;
 
     // dB(A) nikdo nepředpovídá — stejný důvod, proč se hluk neinterpoluje.
-    const shortLabel = activePollutant === 'noise' ? '24 hodin' : '24 h + výhled';
+    // Teplotu/vlhkost výhled ČHMÚ pro kraje také nemá (jen látky).
+    const shortLabel = (activePollutant === 'noise' || cfg.meteo) ? '24 hodin' : '24 h + výhled';
     popupHtml += `
         <div class="chart-range" id="range_${rec.id}">
             <button type="button" class="chart-range-btn${chartRange === '24h' ? ' active' : ''}" data-range="24h">${shortLabel}</button>
@@ -868,7 +920,7 @@ function renderSensor(rec) {
         if (key === activePollutant) return; // už je v hero
         const meta = VALUE_LABELS[key];
         const num = rec.values[key];
-        if (!meta || num === null || num === undefined || isNaN(num)) return;
+        if (!meta || num === null || num === undefined || isNaN(num) || !plausible(key, num)) return;
         const shown = num.toFixed(meta[2] === undefined ? 1 : meta[2]);
         if (POLLUTANTS[key]) {
             chips.push(`<button type="button" class="popup-chip popup-chip-link" data-pollutant="${key}" title="Přepnout na ${meta[0]}">`
@@ -1088,7 +1140,7 @@ async function loadHistory(sensorId, range) {
     try {
         const [response, fcRaw] = await Promise.all([
             fetch(histUrl),
-            (hourly && activePollutant !== 'noise') ? loadForecast(rec, cfg.apiType) : Promise.resolve(null),
+            (hourly && activePollutant !== 'noise' && !cfg.meteo) ? loadForecast(rec, cfg.apiType) : Promise.resolve(null),
         ]);
         if (!response.ok) throw new Error('API Error');
         const data = await response.json();
@@ -1172,11 +1224,13 @@ async function loadHistory(sensorId, range) {
             return gradientCache.g;
         };
 
+        // Gradient zelená→červená říká „nahoře je špatně" — u teploty a vlhkosti
+        // neplatí, proto jednobarevná slabá výplň.
         const datasets = [{
             label: cfg.short,
             data: measured,
             borderColor: '#21275F',
-            backgroundColor: areaGradient,
+            backgroundColor: cfg.meteo ? 'rgba(33, 39, 95, 0.08)' : areaGradient,
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
@@ -1276,7 +1330,7 @@ async function loadHistory(sensorId, range) {
                             },
                             label: function (context) {
                                 if (context.parsed.y === null) return '';
-                                const v = context.parsed.y.toFixed(1) + ' ' + cfg.unit;
+                                const v = context.parsed.y.toFixed(cfg.decimals ?? 1) + ' ' + cfg.unit;
                                 if (context.dataset.label === forecastLabelText && fc) {
                                     return 'Model: ' + v + (fc.anchored ? ' · přepočteno' : '');
                                 }
@@ -1288,8 +1342,10 @@ async function loadHistory(sensorId, range) {
                 scales: {
                     x: { display: false },
                     y: {
-                        beginAtZero: activePollutant !== 'noise',
-                        suggestedMax: cfg.chartMax,
+                        // Hluk a teplota: nula jako spodek osy by průběh slisovala.
+                        beginAtZero: activePollutant !== 'noise' && !cfg.meteo,
+                        ...(cfg.chartMin !== null && cfg.chartMin !== undefined ? { suggestedMin: cfg.chartMin } : {}),
+                        ...(cfg.chartMax !== null && cfg.chartMax !== undefined ? { suggestedMax: cfg.chartMax } : {}),
                         grid: { color: 'rgba(0,0,0,0.05)' },
                         ticks: { font: { size: 9 } },
                         // Bez titulku osy: jednotka je v hero i v každém tooltipu

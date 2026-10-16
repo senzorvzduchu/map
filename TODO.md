@@ -1,4 +1,26 @@
-# TODO — senzorvzduchu.cz mapa 2.9 (AirGradient)
+# TODO — senzorvzduchu.cz mapa 3.0 (teplota a vlhkost)
+
+## 3.0 — před nasazením / po nasazení
+
+- [x] Implementováno a ověřeno lokálně 16. 10. 2026 (`DEPLOY_3.0.md` §6).
+- [ ] Nasadit (ruční FTP, pořadí v `DEPLOY_3.0.md` §2), doplnit §7 „Ověřeno živě".
+- [ ] Po ~1 dni: 24h graf teploty/vlhkosti plný; po 5 dnech 5denní. **Po týdnu velikost
+      `air_quality_history.db` na serveru** (odhad ~14–15 MB místo 10; SC dedupe část ubere).
+- [ ] Ohřev krytů: 16. 10. 16:30 bylo 10 komunitních senzorů nad 25 °C a jeden 44,9 °C
+      při ČHMÚ 14–18 °C. Zvážit automatický příznak jako u PM (odchylka od mediánu sousedů
+      do 30 km, např. > 8 °C) → šedý marker místo červeného. Zatím jen text v ℹ.
+- [ ] Vlhkost 100 % (orosené čidlo, Libčich 11/43): zvážit zobrazení „≥ 99 %" šedě.
+- [ ] **ČHMÚ meteo jako referenční vrstva** (samostatná verze): otevřená data
+      `opendata.chmi.cz/meteorology/climate/now/data/10m-<WSI>-<YYYYMMDD>.json` (prvky `T`,
+      `H`, 10 min, ~950 stanic, Praha 12), `metadata/meta1-*.json` = seznam stanic se
+      souřadnicemi. Jeden soubor na stanici a den (~110 kB) → na Active24 jen podmnožina
+      (města, ~50–100 stanic po 15 min) nebo stahovat na VPS rekordérem a servírovat
+      souhrn. Pak `CHMI_` teplota s vahou 1.0 a případně interpolace jen z ČHMÚ + noční
+      komunitní hodnoty.
+- [ ] Oznámení 3.0 (post) — bez příkras: ~160 míst s teplotou a vlhkostí, graf 5 dní,
+      hodnoty orientační (kryt na slunci), PA korekce.
+- [ ] Hodnoty T/RH pro posouzení korekcí PM (sekce níže) se od 3.0 ukládají i na mapě,
+      ale jen 5 dní — rekordér na VPS stále potřeba.
 
 ## 2.9 — před nasazením / po nasazení
 
