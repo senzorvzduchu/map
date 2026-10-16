@@ -1,3 +1,32 @@
+# 3.1 — meteostanice ČHMÚ jako reference teploty a vlhkosti (sandbox, ověřeno lokálně 16. 10. 2026)
+
+Výchozí bod: `3.0-meteo` (sandbox, nenasazeno). Původní verze změněných souborů: `backup-3.0/`.
+Runbook: `DEPLOY_3.1.md` (nasazuje se spolu s 3.0 — produkce je 2.9).
+
+## Změněné / nové soubory (3.1, 16. 10. 2026)
+
+| Soubor | Změna |
+|---|---|
+| `www/lib/ChmiMeteo.php` | **NOVÝ** — `STATIONS` (60 WSI → záložní název), `parseMeta()` (meta1: WSI, FULL_NAME, GEOGR1 = lon, GEOGR2 = lat, ELEVATION; duplicitní řádky → první), `parseStation()` (10min soubor: poslední řádek `T`/`H` podle DT s QUALITY 0 nebo 5 a hodnotou v mezích −40…60 °C / 0…100 %), `build()` (výstup: wsi, name, lat, lng, elevation, temperature, humidity, measured_at, age_min, stale; > 3 h pryč, > 2 h stale, prvek o > 1 h starší než druhý vypuštěn), `stationUrl()`, `metaUrl()`, `dates()` (dnešek + včerejšek UTC) |
+| `www/lib/Http.php` | `Http::fetchMany($urls, $concurrency = 8, $timeout = 15)` — curl_multi, vrací `[url => [body, code, err]]` |
+| `www/chmi-meteo-proxy.php` | **NOVÝ** — self-refreshing proxy: cache 15 min `cache/chmi_meteo.json`, flock, stale fallback, `?token=` vynutí, `?debug=1` (per stanice http kód, bajty, T/H, `missing`, `elapsed_s`); metadata 1× denně `cache/chmi_meteo_meta.json` (stará kopie při výpadku); soubory stanic paralelně, pro chybějící včerejší den |
+| `www/historygraph/collect.php` | blok **2b CHMI METEO**: `CHMI_M_<WSI>` `temperature`/`humidity`, `measured_at` ze zdroje, dedupe podle (id, typ, čas) přes `insertMeteo(…, $check)`, starší než 3 h se neukládá |
+| `www/historygraph/get_history.php` | whitelist ID + `CHMI_M_[0-9][0-9-]{3,40}` (WSI s pomlčkami) |
+| `www/map/app.js` | `NETWORK_LABELS.chmiMeteo`; `fetchChmiMeteoData()` (síť `chmi`, `values` jen T/RH, `meta.meteoOnly`, `meta.elevation`, `meta.stale`/`ageMin` z proxy); `renderSensor`: `isChmiMeteo` → žádné prázdné kolečko u látek, zdroj „ČHMÚ, meteorologická stanice (oficiální), N m n. m.", hláška „Stanice neaktualizuje" pro ČHMÚ; `fetchAllData` volá nový fetcher |
+| `www/map/info.js` | lead „šest sítí" + věta o referenci ČHMÚ; řádek ČHMÚ (60 meteostanic, černý okraj, AQ stanice skryté); odstavec Teplota a vlhkost začíná referencí (budka 2 m, 10 min, hodinová publikace, 10–85 min stáří); graf: „meteorologické stanice ČHMÚ po 10 minutách" |
+| `www/map/index.html`, `embed.html` | meta description „teplota a vlhkost (reference: meteostanice ČHMÚ)", twitter „6 sítí … teplota a vlhkost"; `title` řádku legendy ČHMÚ; `app.js?v=3.1`, `info.js?v=3.1` (`style.css`, `interp.js` zůstávají 3.0) |
+| `tests/test_chmi_meteo.php` | **NOVÝ** — offline test (ALL PASS, 33 kontrol) |
+| `.claude/launch.json` (kořen) | `chmi-meteo-sandbox`, port 8131 |
+
+Beze změny: `style.css`, `interp.js` (meteo se neinterpoluje; záznamy CHMI_M_ nemají hodnoty látek, takže do
+odhadu nevstupují), `wind.js`, `alerts.js`, `lib/Alerts.php`, `lib/Forecast.php`, `lib/SensorQuality.php`,
+`lib/AirGradient.php`, ostatní proxy, `admin/`, `config.php`, cron.
+
+Rozhodnutí a důvody v `DEPLOY_3.1.md` §3 (podmnožina 60 stanic, 15min obnova při hodinové publikaci
+souboru, QUALITY {0, 5}, síť `chmi` + `meteoOnly`, bez interpolace, dedupe podle `measured_at`).
+
+---
+
 # 3.0 — teplota a vlhkost (sandbox, ověřeno lokálně 16. 10. 2026)
 
 Výchozí bod: `2.9-airgradient` (LIVE od 16. 10. 2026). Původní verze změněných souborů:

@@ -5,6 +5,8 @@
 // (null bod s příznakem "gap"), popisky v čase Europe/Prague, staleness i pro Libčich.
 // 3.0: ?type=temperature | humidity — hodinový slot bere PRŮMĚR (ne maximum),
 // heuristiky ucpání se na ně nepouštějí (konstantní noční teplota není porucha).
+// 3.1: ID CHMI_M_<WSI> = meteostanice ČHMÚ (10min hodnoty, publikované hodinově);
+// jako ostatní CHMI_ bez heuristik, staleness práh 3 h.
 
 header('Content-Type: application/json');
 
@@ -19,8 +21,9 @@ if (!isset($_GET['id'])) {
 
 $sensor_id = $_GET['id'];
 
-// SC_12345, CHMI_ABCDE1, SCK_12345, PA_12345, AG_12345, LIBCICH_<hex devEid>
-if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|AG_\d+|LIBCICH_[A-F0-9]{8,32})\z/', $sensor_id)) {
+// SC_12345, CHMI_ABCDE1, CHMI_M_0-20000-0-11519 (3.1 meteostanice ČHMÚ, WSI s pomlčkami),
+// SCK_12345, PA_12345, AG_12345, LIBCICH_<hex devEid>
+if (!preg_match('/^(SC_\d+|CHMI_M_[0-9][0-9-]{3,40}|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|AG_\d+|LIBCICH_[A-F0-9]{8,32})\z/', $sensor_id)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid sensor ID format']);
     exit;

@@ -3,6 +3,10 @@
  * Sdílený soubor pro index.html i embed.html.
  * 3.0: teplota a vlhkost jako plnohodnotné „látky" v POLLUTANTS (vlastní barvy,
  * otevřený spodní okraj škály, bez interpolace, bez výhledu, ČHMÚ skryto).
+ * 3.1: meteorologické stanice ČHMÚ (chmi-meteo-proxy.php, otevřená 10min data) jako
+ * referenční síť pro teplotu a vlhkost — záznamy CHMI_M_<WSI> v síti 'chmi' nesou
+ * jen temperature/humidity (meta.meteoOnly), takže u látek nejsou vidět ani jako
+ * prázdné kolečko; stanice kvality ovzduší ČHMÚ zůstávají u meteo vrstev skryté.
  *
  * Multipollutant model (převzato z nosicheck.cz, rozšířeno o Libčich):
  *  - POLLUTANTS = registr látek (pásma, barvy, poloměr, graf, interpolace)
@@ -110,6 +114,8 @@ const POLLUTANTS = {
 const NETWORK_LABELS = {
     community: 'Sensor.Community',
     chmi: 'ČHMÚ (Oficiální)',
+    // 3.1: meteorologické stanice ČHMÚ (otevřená data) — jiný zdroj než stanice kvality ovzduší
+    chmiMeteo: 'ČHMÚ, meteorologická stanice (oficiální)',
     sck: 'Smart Citizen',
     purpleair: 'PurpleAir',
     libcich: '<a href="https://libcich.cz/" target="_blank" rel="noopener">Projekt Libčich (libcich.cz)</a>',
@@ -496,6 +502,7 @@ async function fetchAllData() {
     const results = await Promise.all([
         fetchSensorCommunityData(),
         fetchChmiData(),
+        fetchChmiMeteoData(),
         fetchSmartCitizenData(),
         fetchPurpleAirData(),
         fetchLibcichData(),
@@ -813,6 +820,38 @@ async function fetchChmiData() {
     } catch (e) { console.error('Critical Error in fetchChmiData:', e); return false; }
 }
 
+/**
+ * 3.1: meteorologické stanice ČHMÚ — chmi-meteo-proxy.php (otevřená 10min data,
+ * podmnožina ~60 stanic, cache 15 min). Záznam nese JEN teplotu a vlhkost, proto
+ * meta.meteoOnly: renderSensor ho u látek nekreslí ani jako prázdné kolečko
+ * (to je jen pro stanice kvality ovzduší). Soubor ČHMÚ vychází hodinově, běžné
+ * stáří je 10–85 min; proxy dá stale=true až po 2 h → šedý marker jako u AirGradientu.
+ */
+async function fetchChmiMeteoData() {
+    try {
+        const response = await fetch('../chmi-meteo-proxy.php');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const stations = Array.isArray(data.stations) ? data.stations : [];
+
+        stations.forEach(st => {
+            if (!st.wsi || !st.lat || !st.lng) return;
+            const values = {};
+            const t = parseFloat(st.temperature);
+            if (!isNaN(t)) values.temperature = t;
+            const h = parseFloat(st.humidity);
+            if (!isNaN(h)) values.humidity = h;
+            if (values.temperature === undefined && values.humidity === undefined) return;
+
+            const meta = { meteoOnly: true, elevation: st.elevation ?? null };
+            if (st.stale) { meta.stale = true; meta.ageMin = st.age_min; }
+            upsertSensor('CHMI_M_' + st.wsi, 'chmi', parseFloat(st.lat), parseFloat(st.lng),
+                st.name || ('ČHMÚ ' + st.wsi), values, meta);
+        });
+        return true;
+    } catch (e) { console.error('CHMI Meteo Data Error', e); return false; }
+}
+
 // --- Markery (podle aktivní látky) ---
 /**
  * Popup: pevná šířka (minWidth = maxWidth) — Leaflet jinak šířku odvozuje
@@ -856,13 +895,16 @@ function renderSensor(rec) {
     const rawVal = rec.values[activePollutant];
     const val = (rawVal === undefined || rawVal === null || isNaN(rawVal) || !plausible(activePollutant, rawVal)) ? null : rawVal;
     const isChmi = rec.network === 'chmi';
+    // 3.1: meteostanice ČHMÚ (CHMI_M_) má jen teplotu/vlhkost — u látek se nekreslí vůbec
+    const isChmiMeteo = isChmi && !!(rec.meta && rec.meta.meteoOnly);
     const group = window.layers[rec.network] || map;
     let marker = markers.get(rec.id);
 
-    // Stanice ČHMÚ, které aktivní látku neměří, zůstávají viditelné (prázdné
-    // kolečko) — oficiální síť má být vidět. Komunitní senzory bez hodnoty se
-    // skryjí. Hluk, teplotu ani vlhkost ČHMÚ na této mapě nedodává → skrýt.
-    const showHollow = isChmi && val === null && activePollutant !== 'noise' && !cfg.meteo;
+    // Stanice ČHMÚ kvality ovzduší, které aktivní látku neměří, zůstávají viditelné
+    // (prázdné kolečko) — oficiální síť má být vidět. Komunitní senzory bez hodnoty
+    // se skryjí. Hluk ČHMÚ nedodává → skrýt; u teploty a vlhkosti se stanice kvality
+    // ovzduší skryjí (hodnotu nemají) a místo nich jsou vidět meteostanice (3.1).
+    const showHollow = isChmi && !isChmiMeteo && val === null && activePollutant !== 'noise' && !cfg.meteo;
     if (val === null && !showHollow) {
         if (marker && group.hasLayer(marker)) group.removeLayer(marker);
         return;
@@ -888,7 +930,7 @@ function renderSensor(rec) {
             const age = rec.meta.ageMin;
             const ageText = (age === undefined || age === null) ? 'déle než 30 min'
                 : (age >= 60 ? `před ${Math.floor(age / 60)} h ${age % 60} min` : `před ${age} min`);
-            popupHtml += `<div class="popup-age">Senzor neaktualizuje — poslední měření ${ageText}</div>`;
+            popupHtml += `<div class="popup-age">${isChmi ? 'Stanice' : 'Senzor'} neaktualizuje — poslední měření ${ageText}</div>`;
         }
     } else {
         popupHtml += `<div class="popup-detail" style="font-style:italic; color:#999; justify-content:center;">${cfg.short} zde neměřeno</div>`;
@@ -932,7 +974,14 @@ function renderSensor(rec) {
     });
     if (chips.length) popupHtml += `<div class="popup-others" id="others_${rec.id}">${chips.join('')}</div>`;
 
-    popupHtml += `<div class="popup-source">Zdroj: ${NETWORK_LABELS[rec.network] || 'Sensor.Community'}</div></div>`;
+    // 3.1: meteostanice ČHMÚ uvádí jiný zdroj než stanice kvality ovzduší + nadmořskou výšku
+    let sourceLabel = NETWORK_LABELS[rec.network] || 'Sensor.Community';
+    if (isChmiMeteo) {
+        sourceLabel = NETWORK_LABELS.chmiMeteo;
+        const elev = rec.meta.elevation;
+        if (elev !== null && elev !== undefined && !isNaN(elev)) sourceLabel += `, ${Math.round(elev)} m n. m.`;
+    }
+    popupHtml += `<div class="popup-source">Zdroj: ${sourceLabel}</div></div>`;
 
     const isPurpleAir = rec.network === 'purpleair';
     const isLibcich = rec.network === 'libcich';

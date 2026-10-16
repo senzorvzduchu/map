@@ -1,3 +1,15 @@
+# 3.1-chmi-meteo — Lokální testování (sandbox)
+
+> Stav 3.1: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `3.0-meteo`;
+> původní verze změněných souborů: `backup-3.0/`.
+> Server 3.1: `.claude/launch.json` → `chmi-meteo-sandbox`, port **8131** (8130 = 3.0, 8129 = 2.9).
+> Test: `php tests/test_chmi_meteo.php` (ALL PASS). Kolektor lokálně: příkaz níže s `PROXY_BASE_URL`
+> = `http://127.0.0.1:8131`. Před prvním během smazat `www/cache/chmi_meteo*.json`, aby proxy
+> stáhla čerstvě; `?debug=1` ukáže stanice bez souboru (`missing`). Co testovat očima: „🌡 Teplota"
+> → ~60 markerů s černým okrajem mezi komunitními, popup „Praha, Karlov" (zdroj „ČHMÚ, meteorologická
+> stanice (oficiální), 261 m n. m.", graf), zpět na PM2.5 → meteostanice zmizí bez prázdných koleček.
+> Podrobně `DEPLOY_3.1.md` §2, §6.
+
 # 3.0-meteo — Lokální testování (sandbox)
 
 > Stav 3.0: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `2.9-airgradient`;

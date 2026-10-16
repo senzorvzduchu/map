@@ -15,6 +15,7 @@ $url_chmi_data  = "$proxy_base/chmi-proxy.php?type=data";
 $url_sck_proxy  = "$proxy_base/sck-proxy.php";
 $url_pa_proxy   = "$proxy_base/pa-proxy.php";
 $url_ag_proxy   = "$proxy_base/ag-proxy.php";
+$url_chmi_meteo = "$proxy_base/chmi-meteo-proxy.php"; // 3.1: meteostanice ČHMÚ (T/RH)
 $url_libcich   = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "$proxy_base/libcich-proxy.php?mode=aqi";
 
 $db_file = __DIR__ . '/air_quality_history.db';
@@ -245,6 +246,37 @@ if ($chmi_meta && $chmi_csv) {
     $db->commit();
 } else {
     echo "Warning: CHMI Proxy could not be loaded.\n";
+}
+
+// ==========================================
+// 2b. PROCESS CHMI METEO DATA (3.1 — teplota a vlhkost z meteostanic ČHMÚ)
+// ==========================================
+// chmi-meteo-proxy.php vrací { stations: [ {wsi, temperature, humidity, measured_at, …} ] }.
+// Zdroj publikuje 10min hodnoty, ale soubor jednou za hodinu; cron běží po 5 min →
+// measured_at bereme ZE ZDROJE a stejnou časovou značku DEDUPLIKUJEME (jako ČHMÚ PM
+// a Libčich). Jinak by se stejná hodnota zapsala 12× za hodinu pod time().
+// Stanice bez měření za 3 h se neukládá (proxy ji stejně vypustí).
+
+$cm_json = fetchUrl($url_chmi_meteo);
+if ($cm_json) {
+    $cmData = json_decode($cm_json, true);
+    if (is_array($cmData) && isset($cmData['stations']) && is_array($cmData['stations'])) {
+        $db->beginTransaction();
+        $stmt  = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+        $check = $db->prepare("SELECT 1 FROM measurements WHERE sensor_id = ? AND value_type = ? AND measured_at = ? LIMIT 1");
+
+        foreach ($cmData['stations'] as $st) {
+            if (empty($st['wsi']) || empty($st['measured_at'])) continue;
+            $sensor_id = "CHMI_M_" . $st['wsi'];
+            $ts = strtotime($st['measured_at']);
+            if ($ts === false || $timestamp - $ts > 3 * 3600) continue;
+            insertMeteo($stmt, $sensor_id, $ts, $st['temperature'] ?? null, $st['humidity'] ?? null, $stats, $check);
+        }
+        $db->commit();
+    } else {
+        echo "Warning: CHMI Meteo Proxy did not return valid JSON.
+";
+    }
 }
 
 // ==========================================

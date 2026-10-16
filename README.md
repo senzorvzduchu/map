@@ -1,7 +1,9 @@
-# senzorvzduchu.cz — Air Quality Map (3.0 — temperature & humidity, SANDBOX; 2.9 in production since 2026-10-16)
+# senzorvzduchu.cz — Air Quality Map (3.1 — ČHMÚ meteo stations as T/RH reference, SANDBOX on top of 3.0; 2.9 in production since 2026-10-16)
 
 Real-time air quality monitoring map for the Czech Republic. Aggregates data from six sources into a unified interactive Leaflet map with 5-day historical charts.
 
+> **Version 3.1 (sandbox, verified locally 2026-10-16):** 60 ČHMÚ meteorological stations from the ČHMÚ open-data 10-minute feed (`chmi-meteo-proxy.php` + `lib/ChmiMeteo.php`; one JSON per station per day → fixed city subset, 15-min self-refreshing cache, parallel download) shown as the temperature/humidity **reference** with the black ČHMÚ border; ids `CHMI_M_<WSI>`, history via `collect.php` (deduped by source timestamp). See `DEPLOY_3.1.md`, `MIGRATION.md`.
+>
 > **Version 3.0 (sandbox, verified locally 2026-10-16):** temperature and humidity as two more entries in the pollutant bar — ~160 community sensors (Sensor.Community, PurpleAir, Smart Citizen, Libčich, AirGradient; ČHMÚ hidden), own colour scales (blue→red, ochre→blue), 5-day history chart (hourly means), implausible readings (dead DHT22 at −14x °C) hidden, PurpleAir sensor offset (−8 °F / +4 % RH), no interpolation (enclosure heating). Also: one Sensor.Community record per sensor per collector run (halves SC rows). See `DEPLOY_3.0.md`, `MIGRATION.md`.
 >
 > **Version 2.9 (deployed 2026-10-16, verified live):** sixth network **AirGradient** (public world feed, no key; `ag-proxy.php` + `lib/AirGradient.php`, CZ bbox filter, 3-min self-refreshing cache, grey marker for readings 30 min–2 h old, CO₂ chip, CC BY-SA 4.0 attribution, history via `collect.php`). See `DEPLOY_2.9.md`, `MIGRATION.md`.

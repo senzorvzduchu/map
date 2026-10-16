@@ -10,17 +10,18 @@ function openInfoModal() {
         <h2>Jak mapa funguje</h2>
 
         <div class="info-lead">
-            Mapa spojuje pět senzorových sítí do jednoho pohledu na kvalitu ovzduší
+            Mapa spojuje šest senzorových sítí do jednoho pohledu na kvalitu ovzduší
             v ČR. Lišta nahoře přepíná veličinu (PM2.5, PM10, NO₂, O₃, hluk, teplota, vlhkost), barva
             senzoru odpovídá aktuální hodnotě, kliknutím se otevře graf s historií a výhledem.
-            Barevná plocha mezi senzory je interpolace.
+            Barevná plocha mezi senzory je interpolace. U teploty a vlhkosti jsou referencí
+            meteorologické stanice ČHMÚ.
         </div>
 
         <details class="info-sec" open>
             <summary>📡 Senzorové sítě</summary>
             <table class="info-table">
                 <tr><th>Síť</th><th>Co to je</th><th>Váha</th></tr>
-                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Teplotu a vlhkost z ČHMÚ tato mapa zatím nebere, při jejich volbě se stanice skryjí.</td><td>1.0</td></tr>
+                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Teplotu a vlhkost dodává jiná sada stanic ČHMÚ: 60 meteorologických stanic (otevřená data ČHMÚ, 10minutové hodnoty, krajská a okresní města, horské stanice). Na mapě jsou referencí s černým okrajem; stanice kvality ovzduší se při volbě teploty nebo vlhkosti skryjí.</td><td>1.0</td></tr>
                 <tr><td><strong>PurpleAir</strong></td><td>Komunitní optické senzory. Hodnoty PM2.5 jsou korigované vzorcem US EPA (Barkjohn 2021).</td><td>0.25</td></tr>
                 <tr><td><strong>Smart Citizen</strong></td><td>Open-source stanice (Fab Lab Barcelona). Jediná síť s měřením <strong>hluku</strong> (MEMS mikrofon, dB(A)).</td><td>0.15</td></tr>
                 <tr><td><strong>Sensor.Community</strong></td><td>Největší DIY síť v ČR — levné optické senzory PM2.5/PM10, které si lidé staví sami.</td><td>0.10</td></tr>
@@ -46,14 +47,19 @@ function openInfoModal() {
             rozkládá NO z dopravy; měří jej jen stanice ČHMÚ.</p>
             <p><strong>Hluk</strong> — dB(A) ze stanic Smart Citizen. Hodnota platí
             pro nejbližší okolí stanice.</p>
-            <p><strong>Teplota a vlhkost</strong> — z čidel komunitních senzorů
+            <p><strong>Teplota a vlhkost</strong> — referencí jsou meteorologické
+            stanice ČHMÚ (černý okraj): čidlo v meteorologické budce 2&nbsp;m nad
+            zemí, 10minutové hodnoty, soubor ČHMÚ vychází jednou za hodinu, takže
+            hodnota je 10–85 minut stará. Ostatní body jsou čidla komunitních senzorů
             (Sensor.Community, PurpleAir, Smart Citizen, Libčich, AirGradient).
             Čidlo sedí v krytu senzoru, ne v meteorologické budce: na slunci
             ukazuje o několik °C víc, u PurpleAir odečítáme výrobcem
             dokumentovaných 4,4&nbsp;°C a přičítáme 4&nbsp;% vlhkosti. Vlhkost
-            95–100&nbsp;% bývá orosené čidlo. Hodnoty jsou orientační; ukazují
-            rozdíly mezi místy (tepelný ostrov města, inverze, mlha) a vlhkost,
-            při které optické prachové senzory nadhodnocují PM.</p>
+            95–100&nbsp;% bývá orosené čidlo. Komunitní hodnoty jsou orientační;
+            porovnání s nejbližší stanicí ČHMÚ ukáže, o kolik je čidlo v krytu
+            přehřáté. Mapa ukazuje rozdíly mezi místy (tepelný ostrov města,
+            inverze, mlha) a vlhkost, při které optické prachové senzory
+            nadhodnocují PM.</p>
         </details>
 
         <details class="info-sec">
@@ -105,8 +111,9 @@ function openInfoModal() {
             hodiny se bere <strong>nejvyšší</strong>, ne průměr, aby krátká
             špička v grafu zůstala. U teploty a vlhkosti je to naopak průměr
             hodiny.</p>
-            <p>Komunitní senzory ukládáme každých 5 minut, ČHMÚ a Libčich jako
-            hodinové průměry. Šedý pruh v grafu je výpadek dat. Popup upozorní,
+            <p>Komunitní senzory ukládáme každých 5 minut, stanice kvality ovzduší
+            ČHMÚ a Libčich jako hodinové průměry, meteorologické stanice ČHMÚ po
+            10 minutách. Šedý pruh v grafu je výpadek dat. Popup upozorní,
             když senzor dlouhodobě hlásí konstantní hodnotu (možné ucpání) nebo
             když zdroj přestal aktualizovat.</p>
         </details>

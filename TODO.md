@@ -1,4 +1,27 @@
-# TODO — senzorvzduchu.cz mapa 3.0 (teplota a vlhkost)
+# TODO — senzorvzduchu.cz mapa 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+
+## 3.1 — před nasazením / po nasazení
+
+- [x] Implementováno a ověřeno lokálně 16. 10. 2026 (`DEPLOY_3.1.md` §6): 60 meteostanic ČHMÚ,
+      proxy + lib + offline test, kolektor (dedupe), popup s grafem, embed.
+- [ ] Nasadit spolu s 3.0 (ruční FTP, pořadí v `DEPLOY_3.1.md` §2), doplnit §7 „Ověřeno živě".
+      **Klíčová kontrola z hostingu**: `/chmi-meteo-proxy.php?debug=1` → `http_code 200`, `missing []`,
+      `elapsed_s` (60 paralelních stažení z opendata.chmi.cz; výhled uvízl 7.–8. 9. 2026 právě na
+      dostupnosti opendata z Active24). Když je pomalé → snížit `CHMI_METEO_CONCURRENCY` nebo počet stanic.
+- [ ] Po ~1 dni: 24h graf meteostanice plný (24 bodů, 1 bod/h — zdroj publikuje hodinově); po 5 dnech
+      5denní; `age_min` v proxy by neměl překračovat ~85 min (jinak ČHMÚ změnil kadenci publikace →
+      upravit `STALE_SEC`/TTL).
+- [ ] Po půlnoci UTC ověřit přechod dnů (`dates()` zkouší včerejšek, když dnešní soubor ještě není).
+- [ ] Seznam stanic: `ChmiMeteo::STATIONS` je ruční; `?debug=1 → missing` ukáže stanice bez souboru.
+      Kandidáti k doplnění (mají 10m soubor, ověřeno 16. 10.): Doksany, Kocelovice, Luká, Krnov,
+      Holešov, Moravské Budějovice. Strop ~60 kvůli zátěži.
+- [ ] Teď je reference vidět vedle komunitních čidel → **auto-příznak ohřevu krytu**: komunitní
+      teplota > nejbližší meteostanice ČHMÚ do ~30 km + 8 °C → šedý marker (navazuje na bod v 3.0).
+- [ ] Nápad: interpolace teploty jen ze stanic ČHMÚ (60 bodů je na IDW řídké; spíš s doplněním
+      stanic nebo jako „noční" režim, kdy komunitní čidla sedí). Bez pokynu neprovádět.
+- [ ] Oznámení 3.0 + 3.1 (post) — bez příkras: teplota a vlhkost ze ~160 komunitních míst +
+      60 meteostanic ČHMÚ jako reference, graf 5 dní, komunitní hodnoty orientační (kryt na slunci).
+
 
 ## 3.0 — před nasazením / po nasazení
 
@@ -10,15 +33,9 @@
       při ČHMÚ 14–18 °C. Zvážit automatický příznak jako u PM (odchylka od mediánu sousedů
       do 30 km, např. > 8 °C) → šedý marker místo červeného. Zatím jen text v ℹ.
 - [ ] Vlhkost 100 % (orosené čidlo, Libčich 11/43): zvážit zobrazení „≥ 99 %" šedě.
-- [ ] **ČHMÚ meteo jako referenční vrstva** (samostatná verze): otevřená data
-      `opendata.chmi.cz/meteorology/climate/now/data/10m-<WSI>-<YYYYMMDD>.json` (prvky `T`,
-      `H`, 10 min, ~950 stanic, Praha 12), `metadata/meta1-*.json` = seznam stanic se
-      souřadnicemi. Jeden soubor na stanici a den (~110 kB) → na Active24 jen podmnožina
-      (města, ~50–100 stanic po 15 min) nebo stahovat na VPS rekordérem a servírovat
-      souhrn. Pak `CHMI_` teplota s vahou 1.0 a případně interpolace jen z ČHMÚ + noční
-      komunitní hodnoty.
-- [ ] Oznámení 3.0 (post) — bez příkras: ~160 míst s teplotou a vlhkostí, graf 5 dní,
-      hodnoty orientační (kryt na slunci), PA korekce.
+- [x] **ČHMÚ meteo jako referenční vrstva** → hotovo jako **3.1** (`3.1-chmi-meteo/`, podmnožina
+      60 stanic po 15 min, `chmi-meteo-proxy.php`); interpolace jen z ČHMÚ zůstává jako nápad (výše).
+- [ ] Oznámení 3.0 (post) — sloučeno s oznámením 3.1 (viz výše).
 - [ ] Hodnoty T/RH pro posouzení korekcí PM (sekce níže) se od 3.0 ukládají i na mapě,
       ale jen 5 dní — rekordér na VPS stále potřeba.
 

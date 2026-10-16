@@ -83,9 +83,18 @@ and an inline `<style>` block of compact overrides in `embed.html`.
   the Barkjohn PM2.5 correction, which must keep the raw RH.
 - The chip bar has 7 chips + ℹ: on phones it scrolls; `updatePollutantChips()` scrolls
   the active chip into view.
-- ČHMÚ open data has 10-min T/RH for ~950 stations (`opendata.chmi.cz/meteorology/
-  climate/now/`), one JSON per station per day — too heavy to poll fully from Active24;
-  a city subset is a possible later version.
+- 3.1: ČHMÚ **meteorological** stations are the T/RH reference. `chmi-meteo-proxy.php` +
+  `lib/ChmiMeteo.php` read the ČHMÚ open-data 10-min feed (`opendata.chmi.cz/meteorology/
+  climate/now/data/10m-<WSI>-<YYYYMMDD>.json`, one JSON per station per DAY, ~100 kB, file
+  regenerated hourly at HH:01) for the fixed subset `ChmiMeteo::STATIONS` (60 WSIs, keep ≤ ~60;
+  some meta1 stations have no 10m file — check `?debug=1` → `missing` after editing the list).
+  Metadata `meta1-<day>.json` once a day. QUALITY {0, 5} = valid (5 = unchecked real-time).
+  Records are network `chmi`, id `CHMI_M_<WSI>`, values ONLY temperature/humidity,
+  `meta.meteoOnly: true` → `renderSensor` never draws them hollow on pollutant layers; ČHMÚ
+  air-quality stations stay hidden on meteo layers. `stale` after 2 h (hourly publication is
+  normal), dropped after 3 h. `collect.php` block 2b stores them with `measured_at` from the
+  source and dedupes by timestamp; `get_history.php` whitelist includes `CHMI_M_[0-9-]+`.
+  Still no interpolation. Offline test: `tests/test_chmi_meteo.php`.
 
 ## 🔁 Self-refreshing proxies (no CLI cron on Active24)
 
@@ -99,6 +108,9 @@ a non-blocking `flock` (`Http::tryLock`), serving the stale copy on failure.
   filtered to `cat = smog` — this map shows air-quality warnings only.
 - `forecast-proxy.php` — 30 min, ČHMÚ boxplot ZIPs (KRAJ level, 4 pollutants),
   `cache/forecast/kraj_<code>.json`; curve anchored on the sensor's 3 h mean.
+- `chmi-meteo-proxy.php` (3.1) — 15 min, ČHMÚ open-data 10-min station files for
+  `ChmiMeteo::STATIONS` via `Http::fetchMany()` (curl_multi, 8 parallel), `cache/chmi_meteo.json`
+  + daily `cache/chmi_meteo_meta.json`; falls back to yesterday's file after midnight UTC.
 - `ag-proxy.php` (2.9) — 3 min, AirGradient public WORLD feed (no key, ~1.5 MB gzip,
   no bbox param) → `lib/AirGradient.php` filters the CZ bbox, drops `EXCLUDE_IDS`
   (border DE/PL/SK), `offline`, readings > 2 h, PM-less devices; only the CZ subset
