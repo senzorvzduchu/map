@@ -1,6 +1,11 @@
-# 2.8-multipollutant — Lokální testování (sandbox)
+# 2.9-airgradient — Lokální testování (sandbox)
 
-> Stav: **implementováno a otestováno lokálně 4. 9. 2026 (dvě kola). NIC NENASAZENO na produkci.**
+> Stav 2.9: **AirGradient nasazen 16. 10. 2026 ~16:00 a živě ověřen** (`DEPLOY_2.9.md` §7).
+> Výchozí bod 2.9: kopie `2.8-multipollutant`; původní verze změněných souborů: `backup-2.8.7/`.
+> Server 2.9: `.claude/launch.json` → `airgradient-sandbox`, port **8129** (níže uvedený 8128 patří 2.8).
+> Test 2.9: `php tests/test_airgradient.php` (ALL PASS); ověření: `DEPLOY_2.9.md` §2 a §6.
+>
+> Stav 2.8: **implementováno a otestováno lokálně 4. 9. 2026 (dvě kola).**
 > Výchozí bod: kopie `2.7-carto-key` (LIVE). Původní verze změněných souborů: `backup-2.7/`.
 
 ## Co je nového (převzato z nosicheck.cz)

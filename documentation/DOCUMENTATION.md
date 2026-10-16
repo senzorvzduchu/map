@@ -464,6 +464,16 @@ Git is for source-of-truth and history only. **Deploying to the shared hosting i
 
 ## 10. Changelog
 
+### Iteration 2.9 — AirGradient network (2026-10-16, deployed and verified live the same day)
+
+Sixth data source, mirroring the PurpleAir integration. Uploaded by manual FTP on 2026-10-16 ~16:00 and verified live (`DEPLOY_2.9.md` §7).
+
+- **`lib/AirGradient.php`** (new, pure logic): `normalise($world, $now)` — CZ bbox (lat 48.55–51.06, lon 12.09–18.86), `EXCLUDE_IDS` for six in-box DE/PL/SK devices, drops `offline`, readings older than 2 h and devices without PM; emits the pa-proxy shape plus `pm1`, `co2`, `model`, `measured_at`, `age_min`, `online` (< 30 min). Verified fields 2026-10-16: the public feed has no corrected PM field, values are raw PMS5003.
+- **`ag-proxy.php`** (new): self-refreshing 3-min cache `cache/airgradient.json` (flock, atomic write, stale fallback flagged `stale:true`, `?token=CRON_TOKEN` forces, `?debug=1` diagnostics). Downloads the whole-world feed gzipped (~1.5 MB, ~2 900 devices) because the API has no region filter; caches only the ~23-device CZ subset.
+- **Frontend**: network `airgradient` (layer, legend row with CC BY-SA 4.0 title, navy #1E40AF border), `fetchAirGradientData()`, `upsertSensor(…, meta)` — `meta.stale` renders a grey marker with a "Senzor neaktualizuje — poslední měření před X" line and is excluded from interpolation; CO₂ chip; chip decimals per `VALUE_LABELS[key][2]` (humidity/pressure/CO₂ whole numbers). Trust weight 0.10 (raw, uncorrected — same class as Sensor.Community). Modal table row + attribution. Cache-busters `?v=2.9`.
+- **Backend**: `collect.php` block 4b stores `AG_<locationId>` PM2.5/PM10 for online devices only (a stale value re-inserted every 5 min would trip the flatness auto-flag); `get_history.php` whitelist accepts `AG_\d+`.
+- Tests: `tests/test_airgradient.php` (ALL PASS). Verified locally on port 8129: proxy live → cache, 23 markers, popup, embed, one collector run (22 PM2.5 + 23 PM10 rows).
+
 ### Iteration 2.8 — Multi-pollutant map, interpolation, wind (2026-09-04, SANDBOX — not deployed)
 
 Ported from nosicheck.cz (same author), minus dark mode, fires, ČHMÚ alerts, forecast and citizen reports.

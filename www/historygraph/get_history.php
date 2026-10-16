@@ -17,8 +17,8 @@ if (!isset($_GET['id'])) {
 
 $sensor_id = $_GET['id'];
 
-// SC_12345, CHMI_ABCDE1, SCK_12345, PA_12345, LIBCICH_<hex devEid>
-if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|LIBCICH_[A-F0-9]{8,32})\z/', $sensor_id)) {
+// SC_12345, CHMI_ABCDE1, SCK_12345, PA_12345, AG_12345, LIBCICH_<hex devEid>
+if (!preg_match('/^(SC_\d+|CHMI_[A-Z0-9_]+|SCK_\d+|PA_\d+|AG_\d+|LIBCICH_[A-F0-9]{8,32})\z/', $sensor_id)) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid sensor ID format']);
     exit;

@@ -75,6 +75,15 @@ a non-blocking `flock` (`Http::tryLock`), serving the stale copy on failure.
   filtered to `cat = smog` — this map shows air-quality warnings only.
 - `forecast-proxy.php` — 30 min, ČHMÚ boxplot ZIPs (KRAJ level, 4 pollutants),
   `cache/forecast/kraj_<code>.json`; curve anchored on the sensor's 3 h mean.
+- `ag-proxy.php` (2.9) — 3 min, AirGradient public WORLD feed (no key, ~1.5 MB gzip,
+  no bbox param) → `lib/AirGradient.php` filters the CZ bbox, drops `EXCLUDE_IDS`
+  (border DE/PL/SK), `offline`, readings > 2 h, PM-less devices; only the CZ subset
+  is cached (`cache/airgradient.json`). Output `{sensors:[…]}` carries `online`
+  (< 30 min) — app.js greys stale markers (`meta.stale`), interp.js skips them,
+  collect.php stores only online ones (ids `AG_<locationId>`). Raw Plantower PM,
+  no correction → trust 0.10. Licence CC BY-SA 4.0 — keep the attribution in
+  `NETWORK_LABELS`, the legend row title and `info.js`. `?debug=1` = diagnostics.
+  Offline test: `tests/test_airgradient.php`.
 Pure logic lives in `www/lib/` (`Alerts.php`, `Forecast.php` copied verbatim
 from nosicheck.cz — keep them in sync; `tests/test_alerts.php`,
 `tests/test_forecast.php` run offline). Needs PHP `simplexml` + `zlib`.

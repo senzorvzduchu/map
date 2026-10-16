@@ -5,7 +5,7 @@
  * Odhad aktivní látky mezi senzory metodou inverse distance weighting (mocnina 2).
  * Vliv každého senzoru je navíc násoben důvěrou v jeho síť — referenční ČHMÚ
  * musí převážit i proti několika blízkým amatérským senzorům (poměr ~10:1):
- *   ČHMÚ 1.0 > PurpleAir 0.25 > Smart Citizen 0.15 > Sensor.Community 0.10 = Libčich 0.10
+ *   ČHMÚ 1.0 > PurpleAir 0.25 > Smart Citizen 0.15 > Sensor.Community 0.10 = Libčich 0.10 = AirGradient 0.10
  *
  * Vítr (grid z wind-proxy.php): u každého SENZORU se bilineárně vzorkuje U/V,
  * vzdálenost senzor→buňka je anizotropní — po větru zkrácená faktorem
@@ -24,7 +24,8 @@
  */
 
 (function () {
-    const TRUST = { chmi: 1.0, purpleair: 0.25, sck: 0.15, community: 0.10, libcich: 0.10 };
+    // AirGradient = surový Plantower bez korekce, stejná třída jako Sensor.Community → 0.10
+    const TRUST = { chmi: 1.0, purpleair: 0.25, sck: 0.15, community: 0.10, libcich: 0.10, airgradient: 0.10 };
     const CELL_PX = 10;
     const CUTOFF_KM = 25;
     const FADE_KM = 10;
@@ -116,6 +117,7 @@
         sensorStore.forEach(rec => {
             const v = rec.values[activePollutant];
             if (v === undefined || v === null || isNaN(v)) return;
+            if (rec.meta && rec.meta.stale) return; // staré měření — do odhadu nepatří
             const group = window.layers[rec.network];
             if (group && !map.hasLayer(group)) return; // síť vypnutá v legendě
             const p = { lat: rec.lat, lng: rec.lng, v: v, trust: TRUST[rec.network] || 0.1, wu: 0, wv: 0, s: 1 };

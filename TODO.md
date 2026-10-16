@@ -1,22 +1,73 @@
-# TODO — senzorvzduchu.cz mapa 2.8
+# TODO — senzorvzduchu.cz mapa 2.9 (AirGradient)
 
-- [ ] **Zrcadlit na GitHub** (zatím NEPROVÁDĚT, jen zapsáno): složka 2.8 není git repozitář
+## 2.9 — před nasazením / po nasazení
+
+- [x] Nasazena 2.9 (16. 10. 2026 ~16:00, ruční FTP, živě ověřeno — `DEPLOY_2.9.md` §7).
+- [x] Ověřeno `/ag-proxy.php?debug=1` → `http_code: 200` z produkce (16. 10. 2026; hosting dosáhne na
+      api.airgradient.com; lokálně OK 16. 10. 2026).
+- [ ] Po ~1 dni ověřit, že se plní historie `AG_` (24h graf v popupu AirGradient senzoru).
+- [ ] Rozhodnout o hraničních senzorech: teď **vyřazeny** podle ID (`AirGradient::EXCLUDE_IDS`,
+      6 ks DE/PL/SK) stejně jako u PurpleAir. Alternativa = nechat (jako Sensor.Community).
+      Seznam je ruční — nové zahraniční senzory v boxu se objeví na mapě, dokud se nepřidají.
+- [ ] 61860 „Location 2" + 78554 „Předhradí" mají stejné souřadnice (u Poděbrad) → překryv
+      markerů; možná dvojice vedle sebe. Zatím ponecháno, případně blokovat jeden v adminu.
+- [ ] Sledovat duplicity: stejní majitelé mohou mít i Sensor.Community senzor na stejném místě.
+      Ověřeno 16. 10. 2026: v celé ČR jen **jedna dvojice do 150 m** — Vestec: AG 156556
+      (O-1PST, PMS5003) × SC #75038 (SDS011) + #75039 (BME280), 11 m od sebe, jiný hardware,
+      jiné hodnoty (např. 22.3 vs 6.9 µg/m³ ve 13:52 UTC). **Není duplicita, ponechat oba** —
+      je to jediný pár PMS5003 × SDS011 vedle sebe, užitečný pro posouzení korekcí (níže).
+- [ ] Fáze 2 (podle `notes.txt`): ověřit, zda AirGradient senzory nejsou i v OpenAQ (delší
+      historie bez vlastního sběru). Vlastní sběr už běží přes `collect.php` (5 min).
+- [ ] Oznámení 6. sítě (post) — stylem bez příkras; spolu s větou o barevné škále EAQI 2024
+      (viz níže) a atribucí AirGradient CC BY-SA 4.0.
+- [ ] Aktualizovat OG obrázek / texty webu, kde se píše „5 sítí" (meta v HTML už říká 6).
+
+## Korekce podle vlhkosti — posouzení dat (zadáno 16. 10. 2026)
+
+- [ ] **Důkladně posoudit korekce PM2.5 podle vlhkosti** napříč sítěmi: AirGradient (surový
+      PMS5003, na mapě 16. 10. zjevně výš než ČHMÚ a korigovaný PurpleAir v okolí Prahy),
+      Sensor.Community (SDS011 bez korekce, známá citlivost nad ~70 % RH), Smart Citizen.
+      Metoda: dvojice komunitní senzor ↔ stanice ČHMÚ do ~2 km, regrese surové PM2.5 proti
+      referenci s RH senzoru jako kovariátou (vzor Barkjohn 2021), ověřit, zda vzorec pro
+      PurpleAir sedí i na PMS5003 v AirGradientu. Potřeba týdny až měsíce dat (RH 20–95 %,
+      podzimní mlhy, zimní inverze), ne 5 dní.
+- [ ] **Předpoklad: záznam dat.** Mapa dnes drží jen 5 dní a NEUKLÁDÁ vlhkost ani teplotu
+      (`collect.php` jen PM2.5/PM10/NO₂/O₃/hluk). Historii zpětně dodá jen Sensor.Community
+      (archive.sensor.community, denní CSV), ČHMÚ (opendata) a Smart Citizen (API); PurpleAir
+      (placené body), AirGradient (jen org token) a Libčich zpětně nejsou → **začít nahrávat
+      hned**, každý den čekání je ztracený.
+- [ ] Rozhodnout kde nahrávat: (a) rekordér na VPS Hostinger (kde běží nosíček: cron, git,
+      disk) — každých 5 min stáhne 6 veřejných proxy senzorvzduchu.cz + RH/T, ukládá do vlastní
+      DB bez retence, nulový zásah do produkce; (b) levná varianta: na Active24 přidat
+      `value_type` humidity/temperature a prodloužit retenci (riziko: sdílený hosting, SQLite
+      ~10 MB/5 dní → ~120 MB/60 dní, cleanup už jednou selhal 30. 6.). Doporučení: (a).
+- [ ] **Další krok: spec rekordéru na VPS** (stavět v repu NOSICHECK, kde je cron a deploy):
+      schéma (sensor_id, network, measured_at ze zdroje, value_type vč. humidity/temperature,
+      value), zdroje = 6 proxy senzorvzduchu.cz každých 5 min (PA proxy má cache 15 min, AG 3 min,
+      ČHMÚ hodinově → dedupe podle časové značky zdroje), bez retence, noční export do měsíčních
+      komprimovaných souborů. Odhad objemu: ~1 100 hodnot/běh, po dedupe ~150 k řádků/den
+      (~2 GB/rok SQLite, stovky MB/rok komprimovaně). Zpětně hned stáhnout SC archiv
+      (archive.sensor.community), ČHMÚ opendata a SCK API; PA/AG/Libčich jen od spuštění.
+      Cíl posouzení: páry senzor ↔ ČHMÚ do ~2 km (Praha, Brno), RH 20–95 %, podzim/zima.
+
+## Převzato z 2.8 (stále otevřené)
+
+- [ ] **Zrcadlit na GitHub** (zatím NEPROVÁDĚT, jen zapsáno): složka není git repozitář
       (`.gitignore` je, `.git` ne). Cíl: soukromé repo se stejným rozvržením jako nosicheck
-      (`hazarizk/…`), aby šlo vyvíjet a opravovat i v terénu z jiného stroje. Před prvním
-      commitem projít `.gitignore` (config.php, crontoken.txt, DB, cache, backup-2.7/) a
-      `git diff --cached | grep` na tokeny. Deploy zůstává ruční FTP — git nenasazuje.
-- [x] Nasadit 2.8 podle `DEPLOY_2.8.md` (4. 9. 2026; doplňky 2.8.1–2.8.4 nasazeny 7. 9. 2026).
+      (`hazarizk/…`). Před prvním commitem projít `.gitignore` (config.php, crontoken.txt, DB,
+      cache, backup-*/) a `git diff --cached | grep` na tokeny. Deploy zůstává ruční FTP.
 - [ ] Do `config.php` na serveru přidat `ADMIN_TOKEN` (jinak admin blokací používá CRON_TOKEN).
-- [ ] Očima zkontrolovat podklad „Barevná" v normálním okně (Browser pane to nedokázal vykreslit).
-- [ ] Po nasazení sledovat spotřebu CARTO dlaždic (2 vrstvy místo 1; free tier 5 M/měsíc).
-- [ ] Popup polish (2.8 + 2.8.1–2.8.4: pevná šířka, box grafu, štítky-tlačítka, ×) přenést i do
-      nosíčku — zapsáno v `CODE/NOSICHECK/TODO.md`.
+- [ ] Očima zkontrolovat podklad „Barevná" v normálním okně.
+- [ ] Sledovat spotřebu CARTO dlaždic (2 vrstvy místo 1; free tier 5 M/měsíc).
+- [ ] Popup polish (2.8 + 2.8.1–2.8.6) přenést i do nosíčku — zapsáno v `CODE/NOSICHECK/TODO.md`.
 - [ ] V příštím postu jednou větou oznámit změnu barevné škály (EEA EAQI 2024, přísnější zelená).
-- [ ] Nápad: chip „IKO" = oficiální index ČHMÚ jen u stanic ČHMÚ (3h průměry, vzorec ČHMÚ);
-      bez pokynu neprovádět.
-- [ ] Po ~5 dnech od nasazení ověřit, že se plní historie PM10/NO₂/O₃/hluk a 24h pohled.
+- [ ] Nápad: chip „IKO" = oficiální index ČHMÚ jen u stanic ČHMÚ; bez pokynu neprovádět.
 - [ ] Při změně `lib/Alerts.php` nebo `lib/Forecast.php` v nosíčku přenést i sem (kopie 1:1).
-- [x] Nahrát 2.8.5 (nasazeno 8. 9. 2026): `forecast-proxy.php` (diagnostika `last_error`), `map/app.js` + `index.html` + `embed.html`
-      (auto-reload záložky staré > 6 h; `?v=2.8.5`) — viz DEPLOY_2.8.md §10.
-- [x] URL cron `forecast-proxy.php?token=TOKEN` každých 30 min nastaven v administraci Active24 (8. 9. 2026);
-      refresh výhledu už nezávisí na návštěvách.
+
+## Hotovo
+
+- [x] 2.8 nasazena 4. 9. 2026, doplňky 2.8.1–2.8.7 do 9. 9. 2026.
+- [x] 2.9 AirGradient postaveno a otestováno lokálně 16. 10. 2026 (`DEPLOY_2.9.md` §6).
+- [ ] Drobnost (nejen 2.9): produkční PHP serializuje floaty s ~40 desetinnými místy
+      (`serialize_precision`), vidět v `ag-proxy.php` i `pa-proxy.php`. Neškodí, jen větší JSON;
+      oprava = `ini_set('serialize_precision', '-1')` na začátku proxy.

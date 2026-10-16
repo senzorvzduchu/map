@@ -1,3 +1,29 @@
+# 2.9 — AirGradient (nasazeno 16. 10. 2026)
+
+Výchozí bod: `2.8-multipollutant` (LIVE 2.8.7 od 9. 9. 2026). Původní verze změněných souborů:
+`backup-2.8.7/`. Runbook: `DEPLOY_2.9.md`.
+
+## Změněné / nové soubory (2.9, 16. 10. 2026)
+
+| Soubor | Změna |
+|---|---|
+| `www/lib/AirGradient.php` | **NOVÝ** — `AirGradient::normalise($world, $now)`: bbox ČR, vyřazená ID (6 DE/PL/SK), `offline`, stáří > 2 h, bez PM → pryč; výstup ve tvaru pa-proxy (+ `pm1`, `co2`, `model`, `measured_at`, `age_min`, `online`) |
+| `www/ag-proxy.php` | **NOVÝ** — self-refreshing proxy (cache 3 min `cache/airgradient.json`, flock, stale fallback, `?token=` vynutí, `?debug=1`); stahuje světový feed gzipem, cachuje jen CZ |
+| `www/historygraph/collect.php` | blok **4b AirGradient**: `AG_<id>` PM2.5/PM10, jen `online=true` |
+| `www/historygraph/get_history.php` | whitelist ID + `AG_\d+` |
+| `www/map/app.js` | `NETWORK_LABELS.airgradient` (odkaz + CC BY-SA 4.0), vrstva `airgradient`, `fetchAirGradientData()`, `upsertSensor(…, meta)` — `meta.stale` → šedý marker + `.popup-age` se stářím; `VALUE_LABELS.co2`; třetí prvek VALUE_LABELS = desetinná místa štítku (vlhkost, tlak, CO₂ bez desetin) |
+| `www/map/interp.js` | `TRUST.airgradient = 0.10`; `rec.meta.stale` vynechán z odhadu |
+| `www/map/info.js` | řádek AirGradient v tabulce sítí (atribuce, šedý = bez měření 30 min), text vah |
+| `www/map/style.css` | `.src-ag` (okraj #1E40AF), `.popup-age` |
+| `www/map/index.html`, `embed.html` | řádek legendy `data-layer="airgradient"` (title = atribuce), meta „6 sítí … AirGradient", `?v=2.9` u style/app/interp/info |
+| `tests/test_airgradient.php` | **NOVÝ** — offline test normalizace (ALL PASS) |
+
+Rozhodnutí: hraniční senzory vyřazeny podle ID (jako PurpleAir); surové PM bez korekce → váha 0.10
+(jako Sensor.Community); stará měření 30 min–2 h se ukazují šedě a nevstupují do interpolace ani
+historie. Podrobnosti a důvody v `DEPLOY_2.9.md` §3.
+
+---
+
 # 2.8 — multipollutant (test, nenasazeno)
 
 Výchozí bod: `2.7-carto-key` (LIVE 4. 9. 2026). Poznámky k 2.6 (ČHMÚ staleness) jsou

@@ -80,6 +80,8 @@ const NETWORK_LABELS = {
     sck: 'Smart Citizen',
     purpleair: 'PurpleAir',
     libcich: '<a href="https://libcich.cz/" target="_blank" rel="noopener">Projekt Libčich (libcich.cz)</a>',
+    // Licence CC BY-SA 4.0 vyžaduje atribuci — proto je součástí popisku zdroje.
+    airgradient: '<a href="https://www.airgradient.com/map/" target="_blank" rel="noopener">AirGradient</a> (CC BY-SA 4.0)',
 };
 
 let activePollutant = localStorage.getItem('sv_pollutant');
@@ -208,6 +210,7 @@ window.addEventListener('load', function () {
         chmi:      L.layerGroup().addTo(map),
         sck:       L.layerGroup().addTo(map),
         purpleair: L.layerGroup().addTo(map),
+        airgradient: L.layerGroup().addTo(map),
         // Libčich: ~50 senzorů v malém území → clustering IZOLOVANĚ jen na této vrstvě
         libcich:   (typeof L.markerClusterGroup === 'function'
             ? L.markerClusterGroup({
@@ -445,6 +448,7 @@ async function fetchAllData() {
         fetchSmartCitizenData(),
         fetchPurpleAirData(),
         fetchLibcichData(),
+        fetchAirGradientData(),
     ]);
 
     const failures = results.filter(ok => !ok).length;
@@ -461,10 +465,14 @@ async function fetchAllData() {
     if (window.refreshInterp) window.refreshInterp();
 }
 
-/** Uloží normalizované hodnoty senzoru a (pře)kreslí jeho marker. */
-function upsertSensor(id, network, lat, lng, name, values) {
+/**
+ * Uloží normalizované hodnoty senzoru a (pře)kreslí jeho marker.
+ * meta (volitelné): { stale: bool, ageMin: number } — poslední měření starší než
+ * limit sítě; marker se kreslí šedě, popup ukáže stáří a interpolace ho vynechá.
+ */
+function upsertSensor(id, network, lat, lng, name, values, meta) {
     if (sensorBans.has(id)) return; // ruční blokace nebo automatický příznak
-    sensorStore.set(id, { id, network, lat, lng, name, values });
+    sensorStore.set(id, { id, network, lat, lng, name, values, meta: meta || null });
     renderSensor(sensorStore.get(id));
 }
 
@@ -612,6 +620,40 @@ async function fetchPurpleAirData() {
     } catch (e) { console.error('PA Data Error', e); return false; }
 }
 
+/**
+ * AirGradient — ag-proxy.php (CZ podmnožina veřejného světového feedu, cache 3 min).
+ * Surové PM z Plantower bez korekce (veřejné API korigované pole nemá). Proxy už
+ * vypustila senzory offline/starší 2 h; 30 min–2 h přijdou s online=false → šedý marker.
+ */
+async function fetchAirGradientData() {
+    try {
+        const response = await fetch('../ag-proxy.php');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const sensors = Array.isArray(data.sensors) ? data.sensors : [];
+
+        sensors.forEach(sensor => {
+            if (!sensor.latitude || !sensor.longitude) return;
+            const values = {};
+            const pm25 = parseFloat(sensor.pm25);
+            if (!isNaN(pm25) && pm25 <= 500) values.pm25 = pm25;
+            const pm10 = parseFloat(sensor.pm10);
+            if (!isNaN(pm10) && pm10 <= 1000) values.pm10 = pm10;
+            if (values.pm25 === undefined && values.pm10 === undefined) return;
+            if (sensor.pm1 != null) values.pm1 = parseFloat(sensor.pm1);
+            if (sensor.temperature != null) values.temperature = parseFloat(sensor.temperature);
+            if (sensor.humidity != null) values.humidity = parseFloat(sensor.humidity);
+            if (sensor.co2 != null) values.co2 = parseFloat(sensor.co2);
+
+            const meta = sensor.online === false ? { stale: true, ageMin: sensor.age_min } : null;
+            upsertSensor('AG_' + sensor.id, 'airgradient',
+                parseFloat(sensor.latitude), parseFloat(sensor.longitude),
+                sensor.name || ('AirGradient #' + sensor.id), values, meta);
+        });
+        return true;
+    } catch (e) { console.error('AG Data Error', e); return false; }
+}
+
 async function fetchLibcichData() {
     try {
         const response = await fetch('../libcich-proxy.php');
@@ -753,7 +795,9 @@ function popupOptions() {
 const VALUE_LABELS = {
     pm25: ['PM2.5', 'μg/m³'], pm10: ['PM10', 'μg/m³'], pm1: ['PM1', 'μg/m³'],
     no2: ['NO₂', 'μg/m³'], o3: ['O₃', 'μg/m³'], noise: ['Hluk', 'dB(A)'],
-    temperature: ['Teplota', '°C'], humidity: ['Vlhkost', '%'], pressure: ['Tlak', 'hPa'],
+    // třetí prvek = počet desetinných míst ve štítku (výchozí 1); „45 %" a „426 ppm", ne „45.0 %"
+    temperature: ['Teplota', '°C'], humidity: ['Vlhkost', '%', 0], pressure: ['Tlak', 'hPa', 0],
+    co2: ['CO₂', 'ppm', 0],
 };
 
 function renderSensor(rec) {
@@ -773,7 +817,10 @@ function renderSensor(rec) {
         return;
     }
 
-    const color = val === null ? 'transparent' : colorFor(activePollutant, val);
+    // Staré měření (meta.stale, zatím jen AirGradient): hodnota se ukáže, ale marker
+    // je šedý a popup říká, jak je stará — nekreslíme barvu, která už neplatí.
+    const isStale = !!(rec.meta && rec.meta.stale);
+    const color = val === null ? 'transparent' : (isStale ? NO_DATA_COLOR : colorFor(activePollutant, val));
     const radius = val === null ? 8 : cfg.radius(val);
 
     let popupHtml = `<div class="popup-header">${escapeHtml(rec.name)}</div>`;
@@ -786,6 +833,12 @@ function renderSensor(rec) {
                 ${val.toFixed(1)} <span style="font-size:16px; color:#666">${cfg.unit}</span>
             </div>
             <div class="popup-detail main-label">${cfg.heroLabel}</div>`;
+        if (isStale) {
+            const age = rec.meta.ageMin;
+            const ageText = (age === undefined || age === null) ? 'déle než 30 min'
+                : (age >= 60 ? `před ${Math.floor(age / 60)} h ${age % 60} min` : `před ${age} min`);
+            popupHtml += `<div class="popup-age">Senzor neaktualizuje — poslední měření ${ageText}</div>`;
+        }
     } else {
         popupHtml += `<div class="popup-detail" style="font-style:italic; color:#999; justify-content:center;">${cfg.short} zde neměřeno</div>`;
     }
@@ -816,12 +869,13 @@ function renderSensor(rec) {
         const meta = VALUE_LABELS[key];
         const num = rec.values[key];
         if (!meta || num === null || num === undefined || isNaN(num)) return;
+        const shown = num.toFixed(meta[2] === undefined ? 1 : meta[2]);
         if (POLLUTANTS[key]) {
             chips.push(`<button type="button" class="popup-chip popup-chip-link" data-pollutant="${key}" title="Přepnout na ${meta[0]}">`
                 + `<span class="popup-chip-dot" style="background:${colorFor(key, num)}"></span>`
-                + `${meta[0]} <strong>${num.toFixed(1)}</strong> ${meta[1]}</button>`);
+                + `${meta[0]} <strong>${shown}</strong> ${meta[1]}</button>`);
         } else {
-            chips.push(`<span class="popup-chip">${meta[0]} <strong>${num.toFixed(1)}</strong> ${meta[1]}</span>`);
+            chips.push(`<span class="popup-chip">${meta[0]} <strong>${shown}</strong> ${meta[1]}</span>`);
         }
     });
     if (chips.length) popupHtml += `<div class="popup-others" id="others_${rec.id}">${chips.join('')}</div>`;
@@ -830,9 +884,11 @@ function renderSensor(rec) {
 
     const isPurpleAir = rec.network === 'purpleair';
     const isLibcich = rec.network === 'libcich';
-    const borderWeight = (isChmi || isPurpleAir || isLibcich) ? 2 : 1;
+    const isAirGradient = rec.network === 'airgradient';
+    const borderWeight = (isChmi || isPurpleAir || isLibcich || isAirGradient) ? 2 : 1;
     const borderColor = showHollow ? '#999999'
-        : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : (isLibcich ? '#0E7C86' : 'white')));
+        : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : (isLibcich ? '#0E7C86'
+        : (isAirGradient ? '#1E40AF' : 'white'))));
     const fillOpacity = showHollow ? 0 : 0.8;
 
     // Obsah popupu jako DOM uzel, ne řetězec: popup.update() (autoPan po

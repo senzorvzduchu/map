@@ -14,7 +14,8 @@ $url_chmi_meta  = "$proxy_base/chmi-proxy.php?type=metadata";
 $url_chmi_data  = "$proxy_base/chmi-proxy.php?type=data";
 $url_sck_proxy  = "$proxy_base/sck-proxy.php";
 $url_pa_proxy   = "$proxy_base/pa-proxy.php";
-$url_libcich    = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "$proxy_base/libcich-proxy.php?mode=aqi";
+$url_ag_proxy   = "$proxy_base/ag-proxy.php";
+$url_libcich   = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "$proxy_base/libcich-proxy.php?mode=aqi";
 
 $db_file = __DIR__ . '/air_quality_history.db';
 $retention_days = 5;
@@ -298,6 +299,46 @@ if ($pa_json) {
         $db->commit();
     } else {
         echo "Warning: PurpleAir Proxy did not return valid JSON.\n";
+    }
+}
+
+// ==========================================
+// 4b. PROCESS AIRGRADIENT DATA
+// ==========================================
+// ag-proxy.php vrací { sensors: [...] } (ne holé pole jako PurpleAir). Ukládají se
+// jen senzory s online=true (měření < 30 min): starší hodnota by se každých 5 min
+// zapsala znovu → plochý průběh → falešný auto-příznak „stuck".
+
+$ag_json = fetchUrl($url_ag_proxy);
+if ($ag_json) {
+    $agData = json_decode($ag_json, true);
+    if (is_array($agData) && isset($agData['sensors']) && is_array($agData['sensors'])) {
+        $db->beginTransaction();
+        $stmt = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+
+        foreach ($agData['sensors'] as $sensor) {
+            if (empty($sensor['online'])) continue;
+            $sensor_id = "AG_" . $sensor['id'];
+            if (isset($bannedSensors[$sensor_id])) continue;
+
+            if (isset($sensor['pm25']) && $sensor['pm25'] !== null) {
+                $pm25 = floatval($sensor['pm25']);
+                if ($pm25 > 0 && $pm25 <= 500) {
+                    $stmt->execute([$sensor_id, $timestamp, 'PM2.5', $pm25]);
+                    $stats['inserted']++;
+                }
+            }
+            if (isset($sensor['pm10']) && $sensor['pm10'] !== null) {
+                $pm10 = floatval($sensor['pm10']);
+                if ($pm10 > 0 && $pm10 <= 1000) {
+                    $stmt->execute([$sensor_id, $timestamp, 'PM10', $pm10]);
+                    $stats['inserted']++;
+                }
+            }
+        }
+        $db->commit();
+    } else {
+        echo "Warning: AirGradient Proxy did not return valid JSON.\n";
     }
 }
 

@@ -1,8 +1,10 @@
-# senzorvzduchu.cz — Air Quality Map (2.8 — multipollutant, SANDBOX)
+# senzorvzduchu.cz — Air Quality Map (2.9 — AirGradient, PRODUCTION since 2026-10-16)
 
-Real-time air quality monitoring map for the Czech Republic. Aggregates data from five sources into a unified interactive Leaflet map with 5-day historical charts.
+Real-time air quality monitoring map for the Czech Republic. Aggregates data from six sources into a unified interactive Leaflet map with 5-day historical charts.
 
-> **Version 2.8 (SANDBOX — not deployed, 2026-09-04):** multi-pollutant map ported from nosicheck.cz — pollutant bar (PM2.5 / PM10 / NO₂ / O₃ / noise), IDW interpolation overlay with wind advection, animated wind layer (Open-Meteo), methodology modal, label tiles above the color field, ČHMÚ air-quality warnings (slide-in banner), ČHMÚ forecast in the popup chart (24 h + 24 h outlook / 5 days), sensor bans + auto quality flags. Frontend split into shared `map/*.js` + `style.css`. See `TESTING.md` and `MIGRATION.md`. Production is 2.7 (CARTO key).
+> **Version 2.9 (deployed 2026-10-16, verified live):** sixth network **AirGradient** (public world feed, no key; `ag-proxy.php` + `lib/AirGradient.php`, CZ bbox filter, 3-min self-refreshing cache, grey marker for readings 30 min–2 h old, CO₂ chip, CC BY-SA 4.0 attribution, history via `collect.php`). See `DEPLOY_2.9.md`, `MIGRATION.md`.
+>
+> **Version 2.8 (deployed 2026-09-04, 2.8.7 on 2026-09-09):** multi-pollutant map ported from nosicheck.cz — pollutant bar (PM2.5 / PM10 / NO₂ / O₃ / noise), IDW interpolation overlay with wind advection, animated wind layer (Open-Meteo), methodology modal, label tiles above the color field, ČHMÚ air-quality warnings (slide-in banner), ČHMÚ forecast in the popup chart (24 h + 24 h outlook / 5 days), sensor bans + auto quality flags. Frontend split into shared `map/*.js` + `style.css`. See `TESTING.md` and `MIGRATION.md`. Production is 2.7 (CARTO key).
 
 **Live:** https://senzorvzduchu.cz/map/
 
@@ -15,6 +17,7 @@ Real-time air quality monitoring map for the Czech Republic. Aggregates data fro
 | **Smart Citizen Network** | IoT research kits (PMS5003) | ~6 in CZ |
 | **PurpleAir** | Laser particle counters with EPA Barkjohn correction | ~12 in CZ |
 | **Projekt Libčich** | Dense local LoRa network (libcich.cz), raw 2-min + hourly AQI | ~45 in Libčice n. Vlt. |
+| **AirGradient** | Open-source monitors (PMS5003, raw PM + CO₂/T/RH), public world feed, CC BY-SA 4.0 | ~23 in CZ |
 
 All PM2.5 values are displayed on a unified AQI color scale. PurpleAir data is EPA-corrected server-side using the Barkjohn 2021 formula.
 
@@ -28,15 +31,16 @@ External APIs
   ├── ČHMÚ metadata + CSV    →  chmi-proxy.php →  cache/
   ├── Smart Citizen API      →  sck-proxy.php  →  sck_data_cache.json
   ├── PurpleAir API          →  pa-proxy.php   →  pa_data_cache.json
-  └── libcich.cz API         →  libcich-proxy.php (mode=aq / mode=aqi)
+  ├── libcich.cz API         →  libcich-proxy.php (mode=aq / mode=aqi)
                                   →  libcich_data_cache.json / libcich_aqi_cache.json
+  └── AirGradient world feed →  ag-proxy.php   →  cache/airgradient.json (CZ subset, 3 min)
 
 Frontend (Leaflet, every 5 min)
-  └── fetches all five proxies → renders markers with toggle support
+  └── fetches all six proxies → renders markers with toggle support
       (libcich layer = markercluster + "zoom to Libčice" control)
 
 CRON (every 5 min)
-  └── collect.php → reads all five proxies → writes to SQLite
+  └── collect.php → reads all six proxies → writes to SQLite
       (libcich: hourly AQI averages, deduped per hour)
 
 User clicks marker → popup with 5-day Chart.js graph

@@ -25,6 +25,7 @@ function openInfoModal() {
                 <tr><td><strong>Smart Citizen</strong></td><td>Open-source stanice (Fab Lab Barcelona). Jediná síť s měřením <strong>hluku</strong> (MEMS mikrofon, dB(A)).</td><td>0.15</td></tr>
                 <tr><td><strong>Sensor.Community</strong></td><td>Největší DIY síť v ČR — levné optické senzory PM2.5/PM10, které si lidé staví sami.</td><td>0.10</td></tr>
                 <tr><td><strong>Projekt Libčich</strong></td><td>Hustá lokální LoRa síť v Libčicích nad Vltavou (<a href="https://libcich.cz/" target="_blank" rel="noopener">libcich.cz</a>), PM2.5/PM10. Na národním zoomu sloučená do jedné bubliny.</td><td>0.10</td></tr>
+                <tr><td><strong>AirGradient</strong></td><td>Open-source monitory (<a href="https://www.airgradient.com/map/" target="_blank" rel="noopener">airgradient.com</a>), PM2.5/PM10 + CO₂, teplota, vlhkost. Surové hodnoty bez korekce. Senzor bez měření za posledních 30 minut je šedý. Data: AirGradient, licence CC BY-SA 4.0.</td><td>0.10</td></tr>
             </table>
             <p>Váha říká, jak moc daná síť ovlivňuje interpolační odhad (viz níže).
             Vlastní senzor si postavíte za cca 2&nbsp;000&nbsp;Kč — návod na
@@ -64,7 +65,7 @@ function openInfoModal() {
             Počítá se metodou IDW (inverse distance weighting, mocnina&nbsp;2):
             každý senzor ovlivňuje okolí tím víc, čím je blíž, a jeho vliv se
             násobí vahou sítě (ČHMÚ&nbsp;1.0 &gt; PurpleAir&nbsp;0.25 &gt;
-            Smart&nbsp;Citizen&nbsp;0.15 &gt; Sensor.Community a Libčich&nbsp;0.10).
+            Smart&nbsp;Citizen&nbsp;0.15 &gt; Sensor.Community, Libčich a AirGradient&nbsp;0.10).
             V okolí referenční stanice tak převáží její údaj i proti několika
             blízkým amatérským senzorům.</p>
             <p><strong>Vítr odhad protahuje po směru proudění:</strong> u každého

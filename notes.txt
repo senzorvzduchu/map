@@ -1,0 +1,40 @@
+AirGradient -> senzorvzduchu.cz map (5th data source)
+
+SOURCE
+- Endpoint (no token, no registration):
+  https://api.airgradient.com/public/api/v1/world/locations/measures/current
+- Returns a JSON array with the latest reading for every public sensor worldwide (a few MB)
+- No country/bbox filter in the API, so filter server-side
+- Current values only. No history for sensors we don't own (that needs an org token)
+- Licence CC BY-SA 4.0: map must show "Data: AirGradient (CC BY-SA 4.0)"
+
+FIELDS (verified 2026-10-16)
+- locationId (stable ID; NOT the loc= number in airgradient.com map URLs)
+- locationName, latitude, longitude, timestamp (ISO UTC, e.g. 2026-10-16T07:57:26.000Z)
+- pm02 = PM2.5 (raw). Likely also pm01, pm10, atmp, rhum, rco2 - check one record
+- Check whether a corrected PM2.5 field exists (pm02_corrected?); prefer it over raw if so
+- Some sensors have pm02 empty/null (e.g. 81353 Raškova, Řeporyje) -> skip or show grey
+
+CZ SNAPSHOT
+- Bbox lat 48.55-51.06, lon 12.09-18.86 -> 30 sensors, 24 actually in CZ
+- In the box but outside CZ: 90098 Dingolfing, 187808 Regenstauf, 193064 Dresden-Pappritz,
+  159894 Gbstr (DE), 182589 Rzuchów (PL), 196458 Lietavská Lúčka (SK)
+- Decide: keep border sensors (consistent with the Sensor.Community layer) or exclude by ID list
+- 61860 "Location 2" + 78554 Předhradí share coordinates (near Poděbrady) -> overlap on map, possible co-location pair
+- All 30 were reporting within minutes, so the network is live
+
+IMPLEMENTATION (mirror the PurpleAir integration)
+- PHP proxy on Active24, same pattern as PurpleAir: curl with gzip (CURLOPT_ENCODING ''),
+  file cache, TTL ~3 min, filter + normalise before caching (cache only the CZ subset)
+- Lock file so cache expiry doesn't trigger parallel fetches; atomic write (tmp + rename)
+- On fetch failure serve the stale cache, flagged stale
+- Online = timestamp < 30 min old; older -> grey/offline marker
+- Output the same normalised shape the map already uses for PurpleAir (id prefix "ag-")
+- Own marker style/legend entry + attribution line
+- Popup: name, PM2.5 (+PM10/T/RH/CO2 if present), age of reading, link to airgradient.com/map
+
+PHASE 2
+- History: poll the proxy every 5-10 min (webcron or Node-RED on Igor) into the existing
+  SQLite history so AirGradient gets graphs like the other sources
+- Check whether AirGradient sensors also appear in OpenAQ (possible history without own poller)
+- Watch for duplicates if the same owners also run Sensor.Community sensors
