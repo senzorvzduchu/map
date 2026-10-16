@@ -77,7 +77,9 @@ final class SensorQuality
 
     /**
      * Normalise an admin-typed id: bare number ⇒ SC_. Community networks only —
-     * ČHMÚ reference stations cannot be banned. Returns null when invalid.
+     * ČHMÚ reference stations (CHMI_, CHMI_M_) cannot be banned. Returns null when invalid.
+     * 3.2: AG_ (AirGradient, since 2.9) was missing here, so AirGradient units could not be
+     * banned from the admin UI although collect.php and app.js already honour AG_ bans.
      */
     public static function normalizeId(string $raw): ?string
     {
@@ -85,7 +87,7 @@ final class SensorQuality
         if (preg_match('/^\d+$/', $id)) {
             $id = 'SC_' . $id;
         }
-        return preg_match('/^(SC|SCK|PA|LIBCICH)_[A-Za-z0-9_-]{1,40}$/', $id) ? $id : null;
+        return preg_match('/^(SC|SCK|PA|LIBCICH|AG)_[A-Za-z0-9_-]{1,40}$/', $id) ? $id : null;
     }
 
     /**

@@ -1,3 +1,11 @@
+# 3.2-dark-mode — Lokální testování (sandbox)
+
+> Stav 3.2: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `3.1-chmi-meteo`;
+> původní verze změněných souborů: `backup-3.1/`. Server: `.claude/launch.json` → `dark-sandbox`,
+> port **8132**. Co testovat očima: 🌙 za ℹ (jen index.html) → tmavý panel, legenda, popup, graf,
+> podklad „Tmavá", ☀️ zpět; `embed.html` zůstává světlý i po přepnutí v indexu. Podrobně
+> `DEPLOY_3.2.md` §2, §5.
+
 # 3.1-chmi-meteo — Lokální testování (sandbox)
 
 > Stav 3.1: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `3.0-meteo`;

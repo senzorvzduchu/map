@@ -1,4 +1,6 @@
-# senzorvzduchu.cz — Air Quality Map (3.1 — ČHMÚ meteo stations as T/RH reference, SANDBOX on top of 3.0; 2.9 in production since 2026-10-16)
+# senzorvzduchu.cz — Air Quality Map (3.2 — temperature/humidity layers, ČHMÚ meteo reference, dark mode; PRODUCTION since 2026-10-16 22:40)
+
+> **Version 3.2 (deployed 2026-10-16 22:40 together with 3.0 and 3.1, verified live):** dark-mode toggle 🌙/☀️ next to ℹ in the pollutant bar, fullscreen map only (`index.html`; `embed.html` stays light). Follows the OS by default, remembered in `sv_theme`; basemap switches to CARTO dark with the theme; chart, ČHMÚ ring and brand colours adapt. See `DEPLOY_3.2.md`, `MIGRATION.md`.
 
 Real-time air quality monitoring map for the Czech Republic. Aggregates data from six sources into a unified interactive Leaflet map with 5-day historical charts.
 

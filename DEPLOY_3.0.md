@@ -103,4 +103,8 @@ Nahrát zpět soubory z `backup-2.9/` (`map/app.js`, `info.js`, `index.html`, `e
 
 ## 7. Ověřeno živě (po FTP)
 
-- (doplnit po nasazení)
+- Nasazeno 16. 10. 2026 ~22:40 **spolu s 3.1 a 3.2** (13 souborů ze `3.2-dark-mode/www`, ruční FTP
+  uživatelem, backend → frontend). Ověřeno: `get_history.php?id=SC_71641&type=temperature&hours=24&step=hour`
+  → JSON 200 (whitelist OK, 24 slotů, body se plní od dalšího cronu); `pa-proxy.php` → teploty 9–15 °C
+  / RH 58–86 % večer, v souladu s meteostanicemi ČHMÚ (offset platí); obě slupky `?v=3.2`,
+  `data-pollutant="humidity"` v obou; uživatel potvrdil mapu funkční. Podrobnosti `DEPLOY_3.2.md` §6.

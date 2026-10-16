@@ -96,6 +96,24 @@ and an inline `<style>` block of compact overrides in `embed.html`.
   source and dedupes by timestamp; `get_history.php` whitelist includes `CHMI_M_[0-9-]+`.
   Still no interpolation. Offline test: `tests/test_chmi_meteo.php`.
 
+## 🌙 Dark mode (3.2, index.html only)
+
+- `<html data-theme="dark">` is stamped by an inline `<head>` script in `index.html`
+  (`sv_theme` in localStorage, else `prefers-color-scheme`); `applyTheme()` in app.js keeps
+  the 🌙/☀️ button, `meta theme-color` and OS-change tracking in sync. `embed.html` has
+  neither the script nor the button, so it never gets the attribute: keep it that way.
+- Styling is a variable swap in `style.css` under `html[data-theme="dark"]`, plus explicit
+  overrides for brand-blue text (→ `#a5b4fc`) and brand-blue fills (→ `--brand-secondary`),
+  the ČHMÚ ring, Leaflet chrome, `.popup-quality` and alert backgrounds. New UI must use the
+  `--surface*` / `--text-*` / `--border-*` tokens, never hard-coded white or `#21275F` text.
+- The basemap follows the theme (`BASEMAPS.dark`, CARTO dark tiles with the same `?key=`),
+  a manual basemap click afterwards wins (`sv_basemap`, `sv_basemap_prev`). localStorage is
+  shared with the embed, so the embed ignores a stored `dark` basemap at start-up.
+- `body.basemap-dark` (set by `setBasemap`) switches the interpolation blend to `screen`;
+  this is keyed on the BASEMAP, not the UI theme.
+- Chart.js colours and the ČHMÚ marker ring read `isDarkTheme()` at render time; the toggle
+  calls `renderAllSensors()` so an open popup redraws its chart.
+
 ## 🔁 Self-refreshing proxies (no CLI cron on Active24)
 
 Every new data feed follows the same pattern instead of a cron script: the
@@ -134,6 +152,12 @@ from nosicheck.cz — keep them in sync; `tests/test_alerts.php`,
   `upsertSensor` (markers AND interpolation), `collect.php` skips manual bans.
 - Auto flags = flatness over 2 h (`SensorQuality::autoFlags`), PM only, ≥12
   samples, never ČHMÚ; self-healing, not stored.
+- `SensorQuality::normalizeId()` is the single gate for ban ids: `SC_`, `SCK_`, `PA_`,
+  `LIBCICH_` and (since 3.2) `AG_`; a bare number means `SC_`. Add a new community
+  network's prefix THERE or its sensors cannot be banned. ČHMÚ (`CHMI_`, `CHMI_M_`) never.
+- Indoor units (e.g. AG_61860 "Location 2" next to 78554 "Předhradí", Poděbrady) are a
+  known gap: ban manually; an automatic night-time T/RH-vs-ČHMÚ heuristic is specced in
+  `TODO.md`.
 
 ## 📍 Geolocation policy
 

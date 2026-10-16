@@ -1,3 +1,18 @@
+# 3.2 — tmavý režim (sandbox, ověřeno lokálně 16. 10. 2026)
+
+Výchozí bod: `3.1-chmi-meteo` (sandbox, nenasazeno). Původní verze změněných souborů:
+`backup-3.1/`. Runbook: `DEPLOY_3.2.md`. Jen `index.html`; `embed.html` zůstává světlý.
+
+| Soubor | Změna |
+|---|---|
+| `www/map/app.js` | `isDarkTheme()`, `applyTheme()` (tlačítko, meta theme-color), sledování OS jen bez ruční volby; přepínač `#themeToggle` (`sv_theme`, podklad jde s režimem, `sv_basemap_prev`), `BASEMAPS.dark` (CARTO dark + klíč), `body.basemap-dark`; embed ignoruje uložený `dark` podklad; kroužek ČHMÚ světlý v tmavém režimu; graf: `lineColor`, mřížka, popisky, půlnoční čára podle režimu; inline `#666`/`#999` v hero → proměnné |
+| `www/map/style.css` | blok `html[data-theme="dark"]` (proměnné, `.src-chmi`/`.src-sck`, Leaflet bar/atribuce/tip, `.popup-quality`, výstrahy `--lvl-soft`, brandové texty → `#a5b4fc`, brandové výplně → `--brand-secondary`), `body.basemap-dark .interp-overlay { mix-blend-mode: screen }` |
+| `www/map/index.html` | `<meta name="theme-color">`, inline skript `data-theme` před vykreslením, tlačítko 🌙 za ℹ, podklad „Tmavá", `?v=3.2` (style, app) |
+| `www/map/embed.html` | jen `?v=3.2` (style, app) |
+| `.claude/launch.json` (kořen) | `dark-sandbox`, port 8132 |
+
+---
+
 # 3.1 — meteostanice ČHMÚ jako reference teploty a vlhkosti (sandbox, ověřeno lokálně 16. 10. 2026)
 
 Výchozí bod: `3.0-meteo` (sandbox, nenasazeno). Původní verze změněných souborů: `backup-3.0/`.

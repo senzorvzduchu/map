@@ -141,5 +141,14 @@ se na ně nepouštějí (nejsou PM).
 
 ## 7. Ověřeno živě (po FTP)
 
-- (doplnit po nasazení: `?debug=1` z hostingu — `http_code`, `elapsed_s`, `missing`; počet markerů;
-  popup; po dni 24h graf meteostanice plný = 24 bodů)
+- Nasazeno 16. 10. 2026 ~22:40 spolu s 3.0 a 3.2 (ruční FTP uživatelem, pořadí §2).
+- `/chmi-meteo-proxy.php?debug=1` z hostingu (20:37 UTC): `meta.source live`, `http_code 200`,
+  `configured 60`, `with_reading 60`, `missing []`, **`elapsed_s 1.07`** — hosting na opendata.chmi.cz
+  dosáhne, 60 paralelních stažení za vteřinu (lokálně 0,6–0,9 s). Soubory 43–180 kB.
+- `/chmi-meteo-proxy.php`: první volání `X-Source: CHMI-Live`, `stale false`, `count 60`
+  (Praha, Karlov 9,8 °C / 92 %, stáří 48 min = běžné hodinové zpoždění); druhé `Local-Cache`.
+- `/historygraph/get_history.php?id=CHMI_M_0-20000-0-11519&type=temperature&hours=24&step=hour`
+  → JSON 200, 24 hodinových slotů (whitelist `CHMI_M_` OK); body od dalšího běhu cronu.
+- Frontend: obě slupky `app.js?v=3.2`, `info.js?v=3.1`; živý `app.js` obsahuje `CHMI_M_` kód;
+  uživatel potvrdil mapu funkční (meteostanice na vrstvě Teplota).
+- Otevřené: po dni 24h graf meteostanice = 24 bodů; `age_min` ≤ ~85 min.

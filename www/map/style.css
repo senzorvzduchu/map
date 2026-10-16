@@ -188,6 +188,70 @@ body {
 
 /* Interpolační pole: silnice a voda prosvítají */
 .interp-overlay { mix-blend-mode: multiply; }
+/* 3.2: na tmavých dlaždicích by multiply pole zčernalo → aditivně. Řídí se PODKLADEM
+   (třída body ze setBasemap), ne režimem rozhraní. */
+body.basemap-dark .interp-overlay { mix-blend-mode: screen; }
+
+/* ---------- Tmavý režim (3.2) ----------
+   app.js přepíná <html data-theme="dark"> (sv_theme v localStorage, výchozí podle
+   systému); jen index.html — embed.html atribut nikdy nedostane. Převzato z nosíčku:
+   výměna proměnných + pár přepisů Leafletu a pevných barev. */
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg-light: #111827;
+    --text-dark: #e5e7eb;
+    --text-muted: #9ca3af;
+    --text-faint: #6b7280;
+    --surface: #1f2937;
+    --surface-2: #374151;
+    --surface-3: #111827;
+    --surface-brand: #1e2452;
+    --surface-translucent: rgba(31, 41, 55, 0.92);
+    --border-c: #374151;
+    --border-soft: #2b3544;
+}
+/* Tečka ČHMÚ v legendě: černý kroužek by na tmavém panelu zmizel */
+html[data-theme="dark"] .src-chmi { border-color: #e5e7eb; }
+html[data-theme="dark"] .src-sck { border-color: #9ca3af; }
+/* Leaflet: zoom, atribuce, špička bubliny */
+html[data-theme="dark"] .leaflet-bar a {
+    background: var(--surface);
+    color: var(--text-dark);
+    border-bottom-color: var(--border-c);
+}
+html[data-theme="dark"] .leaflet-bar a:hover { background: var(--surface-2); }
+html[data-theme="dark"] .leaflet-control-attribution {
+    background: var(--surface-translucent);
+    color: var(--text-muted);
+}
+html[data-theme="dark"] .leaflet-control-attribution a { color: #7dd3fc; }
+html[data-theme="dark"] .leaflet-popup-tip { background: var(--surface); }
+/* Žluté varování v popupu zůstává žluté, jen tmavší */
+html[data-theme="dark"] .popup-quality { background: #3b3410; border-color: #a16207; color: #fde68a; }
+/* Výstrahy ČHMÚ: pastelové pozadí úrovní → tmavé */
+html[data-theme="dark"] .nc-alert { --lvl-soft: #3b3410; }
+html[data-theme="dark"] .nc-alert.lvl-3 { --lvl-soft: #431407; }
+html[data-theme="dark"] .nc-alert.lvl-4 { --lvl-soft: #450a0a; }
+html[data-theme="dark"] .update-subtitle::before { color: #4b5563; }
+/* Brandová modř #21275F jako TEXT na tmavém panelu není vidět → světlá indigo;
+   jako VÝPLŇ (aktivní čip, tlačítka, ×) splývá s pozadím → sekundární modř. */
+html[data-theme="dark"] .legend-title,
+html[data-theme="dark"] .legend-info-link,
+html[data-theme="dark"] .legend-zoom,
+html[data-theme="dark"] .pollutant-chip.pollutant-info,
+html[data-theme="dark"] .modal h2,
+html[data-theme="dark"] .info-sec[open] summary,
+html[data-theme="dark"] .info-sec a,
+html[data-theme="dark"] .info-legal a,
+html[data-theme="dark"] .nc-alert-more,
+html[data-theme="dark"] .nc-alert-src a { color: #a5b4fc; }
+html[data-theme="dark"] .pollutant-chip.active,
+html[data-theme="dark"] .basemap-btn.active,
+html[data-theme="dark"] .chart-range-btn.active,
+html[data-theme="dark"] .btn-primary,
+html[data-theme="dark"] .toast,
+html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button { background: var(--brand-secondary); border-color: var(--brand-secondary); }
+html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { background: #4f5bc4; }
 
 /* ---------- Vítr (leaflet-velocity readout) ---------- */
 .leaflet-control-velocity {

@@ -1,4 +1,28 @@
-# TODO — senzorvzduchu.cz mapa 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+# TODO — senzorvzduchu.cz mapa 3.2 (tmavý režim) / 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+
+## 3.2 — před nasazením / po nasazení
+
+- [x] Tmavý režim implementován a ověřen lokálně 16. 10. 2026 (`DEPLOY_3.2.md` §5), jen `index.html`.
+- [x] Oprava: `SensorQuality::normalizeId()` nepouštěla `AG_` → senzory AirGradient nešlo v adminu
+      zablokovat (DEPLOY_2.9 tvrdil opak). Od 3.2 jde `AG_<id>` i `CHMI_M_` ne (ČHMÚ se neblokuje).
+- [x] Nasazeno 3.0 + 3.1 + 3.2 najednou 16. 10. 2026 ~22:40 (ruční FTP uživatelem, 13 souborů),
+      živě ověřeno (`DEPLOY_3.2.md` §6, `DEPLOY_3.1.md` §7).
+- [ ] Po ~1 dni: 24h grafy teploty/vlhkosti plné (komunitní i `CHMI_M_`); po 5 dnech 5denní.
+- [ ] Po týdnu: velikost `air_quality_history.db` na serveru (odhad ~14–15 MB místo 10).
+- [ ] **Zablokovat AG_61860 „Location 2"** (Poděbrady, stejné souřadnice jako 78554 „Předhradí"):
+      16. 10. 2026 večer 27,5 °C / 29 % RH vedle 13,5 °C / 59 % → zjevně v interiéru (PM2.5 37 vs 21).
+      Admin: `/admin/bans.php?token=…`, ID `AG_61860`, důvod „interiér". Funguje až po nasazení 3.2
+      (oprava `normalizeId`); do té doby jen přes `AirGradient::EXCLUDE_IDS` (vyžaduje FTP).
+- [ ] **Automatická detekce interiérových senzorů** (všechny komunitní sítě) — samostatná verze:
+      od 3.0 má DB T/RH každých 5 min, od 3.1 referenci ČHMÚ. Heuristika v `SensorQuality` (jako
+      auto-příznaky PM, samoléčivá, s tlačítkem „Zablokovat trvale" v adminu): za posledních 24 h
+      v nočních hodinách (0–5 h místního času, bez slunce) medián (T_senzor − T_ČHMÚ nejbližší
+      do 30 km) > 6 °C **a** medián (RH_ČHMÚ − RH_senzor) > 15 bodů **a** denní rozkmit T senzoru
+      < 4 °C (interiér je stabilní) → příznak `indoor` → senzor skrytý z mapy, interpolace i kolektoru
+      (jako ban). Ověřit nejdřív na známých párech: AG 61860/78554 Poděbrady, SC indoor flag
+      (Sensor.Community má `location.indoor`, PM senzory s ním se už vynechávají — ale majitel ho
+      nemusí nastavit). V zimě topná sezóna dělá rozdíl ještě větší; v létě bez topení/klimatizace
+      slabší — proto i RH.
 
 ## 3.1 — před nasazením / po nasazení
 

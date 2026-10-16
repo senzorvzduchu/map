@@ -2,7 +2,7 @@
 // admin/bans.php — ruční blokace komunitních senzorů (bez uživatelských účtů:
 // chrání token). URL: /admin/bans.php?token=<ADMIN_TOKEN nebo CRON_TOKEN>
 //
-// - Blokovat lze jen SC_/SCK_/PA_/LIBCICH_ (ČHMÚ nikdy); holé číslo = SC_.
+// - Blokovat lze jen SC_/SCK_/PA_/LIBCICH_/AG_ (ČHMÚ nikdy); holé číslo = SC_. (AG_ od 3.2)
 // - Blokovaný senzor zmizí z mapy i z interpolace (sensor-bans.php) a kolektor
 //   jeho hodnoty neukládá. Automatické příznaky (stuck/plateau) jsou jen k nahlédnutí —
 //   samy se zruší, jakmile senzor zase kolísá.
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? '');
     $id = SensorQuality::normalizeId((string)($_POST['sensor_id'] ?? ''));
     if ($id === null) {
-        $err = 'Neplatné ID senzoru. Povolené tvary: 46875, SC_46875, SCK_123, PA_123, LIBCICH_<hex>.';
+        $err = 'Neplatné ID senzoru. Povolené tvary: 46875, SC_46875, SCK_123, PA_123, AG_123, LIBCICH_<hex>.';
     } elseif ($action === 'ban') {
         $reason = mb_substr(trim((string)($_POST['reason'] ?? '')), 0, 200);
         $db->prepare('INSERT INTO sensor_bans (sensor_id, reason, created_at) VALUES (?, ?, ?)
@@ -89,7 +89,7 @@ $tok = $h($token);
   <form method="post">
     <input type="hidden" name="token" value="<?= $tok ?>">
     <input type="hidden" name="action" value="ban">
-    <label>ID senzoru <input type="text" name="sensor_id" placeholder="46875 / SC_46875 / SCK_123 / PA_123" required></label>
+    <label>ID senzoru <input type="text" name="sensor_id" placeholder="46875 / SC_46875 / SCK_123 / PA_123 / AG_123" required></label>
     <label>Důvod <input type="text" name="reason" placeholder="např. senzor v interiéru" size="36"></label>
     <button type="submit">Zablokovat</button>
   </form>

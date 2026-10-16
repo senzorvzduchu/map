@@ -34,7 +34,14 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=3.0">
+    <link rel="stylesheet" href="style.css?v=3.2">
+    <meta name="theme-color" content="#21275F">
+    <script>
+        // 3.2: tmavý režim před prvním vykreslením (sv_theme, jinak systém) — logika v app.js.
+        // Jen fullscreen mapa; embed.html tenhle blok nemá a zůstává světlý.
+        document.documentElement.dataset.theme = localStorage.getItem('sv_theme')
+            || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    </script>
 </head>
 
 <body>
@@ -51,6 +58,7 @@
         <button class="pollutant-chip" data-pollutant="temperature">🌡 Teplota</button>
         <button class="pollutant-chip" data-pollutant="humidity">💧 Vlhkost</button>
         <button class="pollutant-chip pollutant-info" id="infoChip" title="Jak mapa funguje">ℹ</button>
+        <button class="pollutant-chip pollutant-info" id="themeToggle" title="Tmavý režim" aria-label="Přepnout tmavý režim">🌙</button>
     </div>
 
     <div class="update-indicator">
@@ -84,6 +92,7 @@
                 <button class="basemap-btn" data-basemap="light">Světlá</button>
                 <button class="basemap-btn" data-basemap="voyager">Barevná</button>
                 <button class="basemap-btn" data-basemap="osm">OSM</button>
+                <button class="basemap-btn" data-basemap="dark">Tmavá</button>
             </div>
             <div class="legend-info-link" id="infoLink">ℹ Jak mapa funguje</div>
         </div>
@@ -104,7 +113,7 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
 
-    <script src="app.js?v=3.1"></script>
+    <script src="app.js?v=3.2"></script>
     <script src="interp.js?v=3.0"></script>
     <script src="wind.js?v=2.8"></script>
     <script src="info.js?v=3.1"></script>

@@ -196,7 +196,7 @@ const midnightPlugin = {
             }
             if (prevDay !== null && parts[1] !== prevDay) {
                 const xPos = x.getPixelForValue(i);
-                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.strokeStyle = isDarkTheme() ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)';
                 ctx.lineWidth = 1;
                 ctx.setLineDash([]);
                 ctx.beginPath();
@@ -245,14 +245,46 @@ window.addEventListener('load', function () {
     map.getPane('labelsPane').style.zIndex = 375;
     map.getPane('labelsPane').style.pointerEvents = 'none';
 
+    // Podklad: uložená volba vítězí; první návštěva jde podle režimu rozhraní
+    // (tmavý režim → tmavé dlaždice). Embed data-theme nikdy nemá → světlá.
     const storedBasemap = localStorage.getItem('sv_basemap');
-    setBasemap(storedBasemap in BASEMAPS ? storedBasemap : 'light');
+    let initialBasemap = storedBasemap in BASEMAPS ? storedBasemap
+        : (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+    // localStorage je společné pro index i embed: tmavý podklad uložený přepínačem
+    // v index.html nesmí ztmavit embed (ten tlačítko „Tmavá" ani přepínač nemá).
+    if (initialBasemap === 'dark' && !document.getElementById('themeToggle')) initialBasemap = 'light';
+    setBasemap(initialBasemap);
     document.querySelectorAll('.basemap-btn[data-basemap]').forEach(btn => {
         btn.addEventListener('click', () => {
             setBasemap(btn.dataset.basemap);
             localStorage.setItem('sv_basemap', btn.dataset.basemap);
         });
     });
+
+    // 3.2: přepínač tmavého režimu (🌙/☀️ vedle ℹ, jen index.html). Podklad jde
+    // s režimem; pozdější ruční volba podkladu v legendě vítězí (výše).
+    const themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('sv_theme', next);
+            applyTheme(next);
+            if (next === 'dark' && activeBasemapKey !== 'dark') {
+                localStorage.setItem('sv_basemap_prev', activeBasemapKey);
+                setBasemap('dark');
+                localStorage.setItem('sv_basemap', 'dark');
+            } else if (next === 'light' && activeBasemapKey === 'dark') {
+                const prev = localStorage.getItem('sv_basemap_prev') || 'light';
+                setBasemap(prev);
+                localStorage.setItem('sv_basemap', prev);
+            }
+            // Okraj ČHMÚ markerů a barvy grafu jsou podle režimu → překreslit
+            // (stejná cesta jako přepnutí látky; otevřený popup si graf nahraje znovu).
+            renderAllSensors();
+            if (typeof window.layers.libcich.refreshClusters === 'function') window.layers.libcich.refreshClusters();
+        });
+        applyTheme(document.documentElement.dataset.theme || 'light'); // sesynchronizovat tlačítko + meta
+    }
 
     // Vrstvy per síť (přepínání v legendě)
     window.layers = {
@@ -357,6 +389,33 @@ function layoutLegend() {
     legend.style.top = overlaps ? Math.round(b.bottom + 8) + 'px' : '';
 }
 
+// --- Tmavý režim (3.2) ---
+// Inline skript v <head> index.html nastaví data-theme před prvním vykreslením
+// (bez bliknutí); tady se drží tlačítko, meta theme-color a sledování změny v OS.
+// embed.html skript ani tlačítko nemá → zůstává světlý a nic z tohoto se neděje.
+function isDarkTheme() {
+    return document.documentElement.dataset.theme === 'dark';
+}
+function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const btn = document.getElementById('themeToggle');
+    if (btn) {
+        btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+        btn.title = theme === 'dark' ? 'Světlý režim' : 'Tmavý režim';
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', theme === 'dark' ? '#1f2937' : '#21275F');
+}
+// Změnu v OS sledovat jen dokud uživatel nezvolil ručně (a jen tam, kde je tlačítko)
+if (window.matchMedia && document.getElementById('themeToggle')) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('sv_theme')) {
+            applyTheme(e.matches ? 'dark' : 'light');
+            renderAllSensors();
+        }
+    });
+}
+
 // --- Podkladové mapy ---
 // CARTO bez popisků + samostatné popisky v labelsPane, aby interpolační pole
 // leželo mezi mapou a jejími popisky. OSM má popisky v dlaždicích (fallback).
@@ -377,6 +436,12 @@ const BASEMAPS = {
         labels: null,
         attribution: '&copy; OpenStreetMap contributors', subdomains: 'abc', maxZoom: 19,
     },
+    // 3.2: tmavé dlaždice (tlačítko „Tmavá" jen v index.html; tmavý režim je volí sám)
+    dark: {
+        base: `https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
+        labels: `https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,
+        attribution: '&copy; OpenStreetMap &copy; CARTO', subdomains: 'abcd', maxZoom: 20,
+    },
 };
 let baseTileLayer = null;
 let labelTileLayer = null;
@@ -385,6 +450,8 @@ let activeBasemapKey = 'light';
 function setBasemap(key) {
     const cfg = BASEMAPS[key] || BASEMAPS.light;
     activeBasemapKey = BASEMAPS[key] ? key : 'light';
+    // interp.js míchá multiply na světlých dlaždicích, screen na tmavých (style.css)
+    document.body.classList.toggle('basemap-dark', activeBasemapKey === 'dark');
     if (baseTileLayer) map.removeLayer(baseTileLayer);
     if (labelTileLayer) { map.removeLayer(labelTileLayer); labelTileLayer = null; }
 
@@ -923,7 +990,7 @@ function renderSensor(rec) {
     if (val !== null) {
         popupHtml += `
             <div class="popup-pm-value" style="color: ${color}">
-                ${val.toFixed(cfg.decimals ?? 1)} <span style="font-size:16px; color:#666">${cfg.unit}</span>
+                ${val.toFixed(cfg.decimals ?? 1)} <span style="font-size:16px; color:var(--text-muted)">${cfg.unit}</span>
             </div>
             <div class="popup-detail main-label">${cfg.heroLabel}</div>`;
         if (isStale) {
@@ -933,7 +1000,7 @@ function renderSensor(rec) {
             popupHtml += `<div class="popup-age">${isChmi ? 'Stanice' : 'Senzor'} neaktualizuje — poslední měření ${ageText}</div>`;
         }
     } else {
-        popupHtml += `<div class="popup-detail" style="font-style:italic; color:#999; justify-content:center;">${cfg.short} zde neměřeno</div>`;
+        popupHtml += `<div class="popup-detail" style="font-style:italic; color:var(--text-faint); justify-content:center;">${cfg.short} zde neměřeno</div>`;
     }
     popupHtml += `</div>`;
 
@@ -987,8 +1054,9 @@ function renderSensor(rec) {
     const isLibcich = rec.network === 'libcich';
     const isAirGradient = rec.network === 'airgradient';
     const borderWeight = (isChmi || isPurpleAir || isLibcich || isAirGradient) ? 2 : 1;
+    // Černý kroužek ČHMÚ by na tmavých dlaždicích zmizel → světlý (3.2)
     const borderColor = showHollow ? '#999999'
-        : (isChmi ? '#000000' : (isPurpleAir ? '#7B2D8E' : (isLibcich ? '#0E7C86'
+        : (isChmi ? (isDarkTheme() ? '#e5e7eb' : '#000000') : (isPurpleAir ? '#7B2D8E' : (isLibcich ? '#0E7C86'
         : (isAirGradient ? '#1E40AF' : 'white'))));
     const fillOpacity = showHollow ? 0 : 0.8;
 
@@ -1275,11 +1343,14 @@ async function loadHistory(sensorId, range) {
 
         // Gradient zelená→červená říká „nahoře je špatně" — u teploty a vlhkosti
         // neplatí, proto jednobarevná slabá výplň.
+        // 3.2: v tmavém režimu brandová modř na tmavém plátně nejde vidět → světlá indigo.
+        const dark = isDarkTheme();
+        const lineColor = dark ? '#A5B4FC' : '#21275F';
         const datasets = [{
             label: cfg.short,
             data: measured,
-            borderColor: '#21275F',
-            backgroundColor: cfg.meteo ? 'rgba(33, 39, 95, 0.08)' : areaGradient,
+            borderColor: lineColor,
+            backgroundColor: cfg.meteo ? (dark ? 'rgba(165, 180, 252, 0.12)' : 'rgba(33, 39, 95, 0.08)') : areaGradient,
             borderWidth: 2,
             pointRadius: 0,
             pointHoverRadius: 4,
@@ -1305,7 +1376,7 @@ async function loadHistory(sensorId, range) {
             });
             datasets.push({
                 label: forecastLabelText, data: pad(fc.p50),
-                borderColor: '#21275F',
+                borderColor: lineColor,
                 borderWidth: 2,
                 borderDash: [5, 4],
                 pointRadius: 0,
@@ -1350,6 +1421,7 @@ async function loadHistory(sensorId, range) {
                             boxWidth: 20,
                             usePointStyle: false,
                             font: { size: 10 },
+                            ...(dark ? { color: '#9ca3af' } : {}),
                             filter: item => item.text === limitLabel
                         }
                     },
@@ -1395,8 +1467,8 @@ async function loadHistory(sensorId, range) {
                         beginAtZero: activePollutant !== 'noise' && !cfg.meteo,
                         ...(cfg.chartMin !== null && cfg.chartMin !== undefined ? { suggestedMin: cfg.chartMin } : {}),
                         ...(cfg.chartMax !== null && cfg.chartMax !== undefined ? { suggestedMax: cfg.chartMax } : {}),
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        ticks: { font: { size: 9 } },
+                        grid: { color: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' },
+                        ticks: { font: { size: 9 }, ...(dark ? { color: '#9ca3af' } : {}) },
                         // Bez titulku osy: jednotka je v hero i v každém tooltipu
                         // a otočený popisek stojí ~14 px z úzkého grafu v popupu.
                         title: { display: false }
