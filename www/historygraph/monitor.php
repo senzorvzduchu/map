@@ -53,6 +53,22 @@ if (!file_exists($db_file)) {
     }
 }
 
+// 2b. 3.4: stanice jiných provozovatelů (chmi-other-proxy.php) — cache se obnovuje přes
+// collect.php každých 15 min; když je poslední slot starší než 3 h, zdroj (nedokumentovaný
+// backend map chmi.cz) nejspíš změnil tvar nebo adresu → samostatná hláška, stejný cooldown.
+$other_cache = __DIR__ . '/../cache/chmi_other.json';
+$other_threshold = 3 * 3600;
+if ($problem === null && file_exists($other_cache)) {
+    $oc = json_decode((string)file_get_contents($other_cache), true);
+    $slot_end = is_array($oc) && !empty($oc['slot_end']) ? strtotime((string)$oc['slot_end']) : false;
+    if ($slot_end === false) {
+        $problem = "chmi-other-proxy cache unreadable (3.4 other-owner stations)";
+    } elseif (time() - $slot_end > $other_threshold) {
+        $hrs = round((time() - $slot_end) / 3600, 1);
+        $problem = "Other-owner stations (data-provider.chmi.cz) stale for {$hrs} h (last slot " . gmdate('Y-m-d H:i', $slot_end) . "Z) — check chmi-other-proxy.php?debug=1";
+    }
+}
+
 // 3. Send alert or report OK
 if ($problem !== null) {
     $ch = curl_init();

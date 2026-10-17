@@ -53,3 +53,8 @@ www/cache/*.lock
 
 # 2.8: forecast cache dir
 www/cache/forecast/
+
+# Internal: previous-version backup copies and correspondence drafts
+backup/
+backup-*/
+EMAIL_ADMIN_LIBCICH.md

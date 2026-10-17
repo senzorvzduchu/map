@@ -1,4 +1,18 @@
-# TODO — senzorvzduchu.cz mapa 3.3 (auto-příznak indoor) / 3.2 (tmavý režim) / 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+# TODO — senzorvzduchu.cz mapa 3.4 (stanice jiných provozovatelů) / 3.3 (auto-příznak indoor) / 3.2 (tmavý režim) / 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+
+
+## 3.4 — referenční stanice jiných provozovatelů (v produkci od 17. 10. 2026 ~20:25)
+
+- [x] **Nasadit 3.4** — hotovo 17. 10. 2026 ~20:25 (FTP uživatelem), živě ověřeno (`DEPLOY_3.4.md` §7: `elapsed_ms 1855`, `count 30`, popup Radvanice ZÚ).
+- [x] **Nahrát 3.4.1**: `map/index.html` + `map/embed.html` s `<title>Mapa - Senzorvzduchu</title>` — hotovo 17. 10. 2026 ~20:50, živě ověřeno.
+- [ ] Po dni: 24h graf `CHMI_TORD` plný (1 bod/h), `monitor.php` bez hlášky; po týdnu posoudit Ústí n.L.-Pasteurova
+      (PM 3,1/1,0 při 20–40 jinde) a Zlín (NO₂/O₃ 0,0 → null už řeší `ZERO_IS_NULL`).
+- ~~E-mail ZÚ Ostrava a ČHMÚ~~ — **zamítnuto uživatelem 17. 10. 2026: žádné e-maily neposílat.**
+- [ ] Oznámení (post, bez příkras): „+30 oficiálních stanic — Radvanice, Mariánské Hory, Brno-Svatoplukova…“.
+- [ ] Nápad: SK (42) a AT (~46) stanice ze stejné vrstvy jako příhraniční reference (whitelist + souřadnice z EEA
+      nebo převod UTM 33N); PL/DE přes GIOŚ a UBA (viz `../SCOPE_3.4-ref-stations.md` §5 a paměť). Bez pokynu neprovádět.
+- [ ] Když zdroj změní tvar (ntfy z `monitor.php`): `chmi-other-proxy.php?debug=1` → `diag.probe` (404 na všech
+      slotech = změna adresy), `diag.layers` (`stations 0` = změna tvaru `properties`).
 
 ## Rekordér dat na VPS (17. 10. 2026) — mimo verze mapy
 

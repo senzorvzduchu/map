@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Mapa Znečištění - Senzorvzduchu.cz</title>
+    <title>Mapa - Senzorvzduchu</title>
     <meta name="description" content="Největší sjednocená mapa kvality ovzduší v ČR. Spojuje 6 sítí senzorů (Sensor.Community, ČHMÚ, PurpleAir, Smart Citizen, Libčich, AirGradient) – PM2.5, PM10, NO₂, O₃, hluk, teplota a vlhkost (reference: meteostanice ČHMÚ), interpolace, vítr a pětidenní historie.">
 
     <meta property="og:type" content="website">
@@ -93,7 +93,7 @@
             <div id="legendBands"><!-- pásma podle látky vykresluje app.js --></div>
             <div class="legend-sources">
                 <div class="legend-source-item" data-layer="community"><span class="src-dot src-sc"></span>Sensor.Community</div>
-                <div class="legend-source-item" data-layer="chmi" title="Stanice kvality ovzduší; u teploty a vlhkosti meteorologické stanice ČHMÚ (otevřená data)"><span class="src-dot src-chmi"></span>ČHMÚ (oficiální)</div>
+                <div class="legend-source-item" data-layer="chmi" title="Stanice kvality ovzduší ČHMÚ a stanice krajů, měst a zdravotních ústavů zobrazované ČHMÚ; u teploty a vlhkosti meteorologické stanice ČHMÚ (otevřená data)"><span class="src-dot src-chmi"></span>ČHMÚ (oficiální)</div>
                 <div class="legend-source-item" data-layer="sck"><span class="src-dot src-sck"></span>Smart Citizen</div>
                 <div class="legend-source-item" data-layer="purpleair"><span class="src-dot src-pa"></span>PurpleAir</div>
                 <div class="legend-source-item" data-layer="airgradient" title="Data: AirGradient (CC BY-SA 4.0)"><span class="src-dot src-ag"></span>AirGradient</div>
@@ -126,10 +126,10 @@
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
 
-    <script src="app.js?v=3.2"></script>
+    <script src="app.js?v=3.4"></script>
     <script src="interp.js?v=3.0"></script>
     <script src="wind.js?v=2.8"></script>
-    <script src="info.js?v=3.3.1"></script>
+    <script src="info.js?v=3.4"></script>
     <script src="alerts.js?v=2.8"></script>
 </body>
 

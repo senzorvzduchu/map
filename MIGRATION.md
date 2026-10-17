@@ -275,3 +275,25 @@ Soubory: `map/app.js`, `map/info.js`, `map/index.html`, `map/embed.html` (`app.j
   markery, legendu, hero, štítky i interpolaci (vše přes `colorFor`). Dopad: zelená je všude
   přísnější (PM2.5 jen do 5), červená u PM2.5 od 50 (dřív 55) a u PM10 až od 120; NO₂ výrazně
   přísnější. Limitní čáry v grafu (EU 2024/2881) beze změny. Text modalu „Barevná škála" upraven.
+
+## 3.4 (17. 10. 2026) — referenční stanice jiných provozovatelů (ZÚ, kraje, města, podniky)
+
+Soubory: nové `lib/ChmiOther.php`, `chmi-other-proxy.php`, `tests/test_chmi_other.php` (+ `tests/fixtures/
+chmi_other_*_202610171700.json`); změna `map/app.js` (`?v=3.4`), `map/info.js` (`?v=3.4`), `map/index.html`,
+`map/embed.html`, `historygraph/collect.php` (blok 2c), `historygraph/monitor.php`. Podrobně `DEPLOY_3.4.md`,
+pozadí `../SCOPE_3.4-ref-stations.md`.
+
+- Otevřená data ČHMÚ (`opendata.chmi.cz/air_quality/now`) obsahují jen 98 stanic vlastněných ČHMÚ. ISKO má
+  dalších 63 aktivních stanic jiných vlastníků; 40 z nich má hodinová data v nedokumentovaném JSON backendu
+  map chmi.cz (`data-provider.chmi.cz/api/data/ovzdusi/stanice/mereni/{látka}/1h/{slot}`, licence CC BY 4.0
+  podle patičky chmi.cz). Slot = konec průměrovací hodiny UTC → `measured_at` = slot − 1 h (= `startTime`
+  opendata, ověřeno).
+- Stanice jsou v síti `chmi` s ID `CHMI_<kód>` (černý kroužek, váha interpolace 1.0, hollow marker, hláška
+  „neaktualizuje“), navíc `meta.owner` → popup „Zdroj: ČHMÚ (Oficiální), provozovatel stanice: …“. Žádná
+  nová síť v legendě ani v `og:description`.
+- Proxy: TTL 10 min, poslední existující slot (H, jinak H−1…H−3) + slot o hodinu starší jako fallback pro
+  N/A; plyny 0,0 → null; nejnovější hodnota > 3 h → `stale`. `collect.php` ukládá každou látku pod její
+  hodinu (`value_times`), dedupe per hodina, nic > 4 h. `monitor.php` hlásí slot starší než 3 h.
+- Ověřeno lokálně na portu 8134 (`DEPLOY_3.4.md` §6): 30 stanic, 367 ms, dedupe, popup, embed, test ALL PASS.
+- **Nasazeno 17. 10. 2026 ~20:25** (FTP uživatelem), živě ověřeno (`DEPLOY_3.4.md` §7). **3.4.1**: `<title>` obou slupek
+  „Mapa - Senzorvzduchu“ (dřív „Mapa Znečištění - Senzorvzduchu.cz“), `og:title` beze změny.

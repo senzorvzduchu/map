@@ -16,6 +16,7 @@ $url_sck_proxy  = "$proxy_base/sck-proxy.php";
 $url_pa_proxy   = "$proxy_base/pa-proxy.php";
 $url_ag_proxy   = "$proxy_base/ag-proxy.php";
 $url_chmi_meteo = "$proxy_base/chmi-meteo-proxy.php"; // 3.1: meteostanice ČHMÚ (T/RH)
+$url_chmi_other = "$proxy_base/chmi-other-proxy.php"; // 3.4: stanice jiných provozovatelů (přes chmi.cz)
 $url_libcich   = defined('LIBCICH_PROXY_URL') ? LIBCICH_PROXY_URL : "$proxy_base/libcich-proxy.php?mode=aqi";
 
 $db_file = __DIR__ . '/air_quality_history.db';
@@ -279,6 +280,51 @@ if ($cm_json) {
     } else {
         echo "Warning: CHMI Meteo Proxy did not return valid JSON.
 ";
+    }
+}
+
+// ==========================================
+// 2c. PROCESS CHMI OTHER-OWNER STATIONS (3.4 — ZÚ, kraje, města, podniky přes chmi.cz)
+// ==========================================
+// chmi-other-proxy.php vrací { stations: [ {code, values:{pm25,pm10,no2,o3}, value_times:{klíč → unix
+// ZAČÁTEK hodiny}, measured_at, …} ] }. Stejná ID (CHMI_<kód>) a stejná konvence jako blok 2:
+// measured_at = začátek průměrovací hodiny, dedupe per (stanice, látka, hodina). Každá látka
+// má vlastní čas — proxy doplňuje N/A z předchozího slotu, takže NO₂ může být o hodinu starší
+// než PM. Hodnota starší než 4 h se neukládá (proxy ji dává jen jako stale pro mapu).
+
+$co_json = fetchUrl($url_chmi_other);
+if ($co_json) {
+    $coData = json_decode($co_json, true);
+    if (is_array($coData) && isset($coData['stations']) && is_array($coData['stations'])) {
+        $typeMap = ['pm25' => 'PM2.5', 'pm10' => 'PM10', 'no2' => 'NO2', 'o3' => 'O3'];
+        $db->beginTransaction();
+        $stmt  = $db->prepare("INSERT INTO measurements (sensor_id, measured_at, value_type, value) VALUES (?, ?, ?, ?)");
+        $check = $db->prepare("SELECT 1 FROM measurements WHERE sensor_id = ? AND value_type = ? AND measured_at = ? LIMIT 1");
+
+        foreach ($coData['stations'] as $st) {
+            if (empty($st['code']) || !preg_match('/^[A-Z0-9]{4,6}$/', (string)$st['code'])) continue;
+            $sensor_id = "CHMI_" . $st['code'];
+            $values = is_array($st['values'] ?? null) ? $st['values'] : [];
+            $times  = is_array($st['value_times'] ?? null) ? $st['value_times'] : [];
+            $fallbackTs = !empty($st['measured_at']) ? strtotime((string)$st['measured_at']) : false;
+
+            foreach ($typeMap as $key => $type) {
+                if (!isset($values[$key]) || !is_numeric($values[$key])) continue;
+                $value = (float)$values[$key];
+                if ($value < 0 || $value > 500) continue;
+                $ts = isset($times[$key]) && is_numeric($times[$key]) ? (int)$times[$key] : $fallbackTs;
+                if ($ts === false || $ts <= 0 || $timestamp - $ts > 4 * 3600) continue;
+
+                $check->execute([$sensor_id, $type, $ts]);
+                if (!$check->fetch()) {
+                    $stmt->execute([$sensor_id, $ts, $type, $value]);
+                    $stats['inserted']++;
+                }
+            }
+        }
+        $db->commit();
+    } else {
+        echo "Warning: CHMI Other Proxy did not return valid JSON.\n";
     }
 }
 

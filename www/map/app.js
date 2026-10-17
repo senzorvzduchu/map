@@ -570,6 +570,7 @@ async function fetchAllData() {
         fetchSensorCommunityData(),
         fetchChmiData(),
         fetchChmiMeteoData(),
+        fetchChmiOtherData(),
         fetchSmartCitizenData(),
         fetchPurpleAirData(),
         fetchLibcichData(),
@@ -919,6 +920,39 @@ async function fetchChmiMeteoData() {
     } catch (e) { console.error('CHMI Meteo Data Error', e); return false; }
 }
 
+/**
+ * 3.4: referenční stanice JINÝCH provozovatelů než ČHMÚ (zdravotní ústavy, kraje, města,
+ * podniky — např. Ostrava-Radvanice ZÚ, Brno-Svatoplukova). Otevřená data ČHMÚ je
+ * nemají; chmi-other-proxy.php je bere z hodinových vrstev map na chmi.cz (CC BY 4.0).
+ * Zůstávají v síti 'chmi' (ID CHMI_<kód>, černý kroužek, váha 1.0), jen nesou
+ * meta.owner do popupu. Kódy se s opendata nepřekrývají. Hodnota starší než 3 h
+ * přijde se stale=true → šedý marker a hláška „Stanice neaktualizuje" jako u AirGradientu.
+ */
+async function fetchChmiOtherData() {
+    try {
+        const response = await fetch('../chmi-other-proxy.php');
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        const data = await response.json();
+        const stations = Array.isArray(data.stations) ? data.stations : [];
+
+        stations.forEach(st => {
+            if (!st.code || !st.lat || !st.lon) return;
+            const values = {};
+            ['pm25', 'pm10', 'no2', 'o3'].forEach(key => {
+                const v = parseFloat(st.values && st.values[key]);
+                if (!isNaN(v)) values[key] = v;
+            });
+            if (Object.keys(values).length === 0) return;
+
+            const meta = { owner: st.owner || null };
+            if (st.stale) { meta.stale = true; meta.ageMin = st.age_min; }
+            upsertSensor('CHMI_' + st.code, 'chmi', parseFloat(st.lat), parseFloat(st.lon),
+                st.name || ('ČHMÚ ' + st.code), values, meta);
+        });
+        return true;
+    } catch (e) { console.error('CHMI Other Data Error', e); return false; }
+}
+
 // --- Markery (podle aktivní látky) ---
 /**
  * Popup: pevná šířka (minWidth = maxWidth) — Leaflet jinak šířku odvozuje
@@ -1047,6 +1081,9 @@ function renderSensor(rec) {
         sourceLabel = NETWORK_LABELS.chmiMeteo;
         const elev = rec.meta.elevation;
         if (elev !== null && elev !== undefined && !isNaN(elev)) sourceLabel += `, ${Math.round(elev)} m n. m.`;
+    } else if (isChmi && rec.meta && rec.meta.owner) {
+        // 3.4: stanice jiného provozovatele zobrazovaná ČHMÚ — provozovatel do popupu
+        sourceLabel += `, provozovatel stanice: ${escapeHtml(rec.meta.owner)}`;
     }
     popupHtml += `<div class="popup-source">Zdroj: ${sourceLabel}</div></div>`;
 

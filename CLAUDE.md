@@ -129,6 +129,19 @@ a non-blocking `flock` (`Http::tryLock`), serving the stale copy on failure.
 - `chmi-meteo-proxy.php` (3.1) — 15 min, ČHMÚ open-data 10-min station files for
   `ChmiMeteo::STATIONS` via `Http::fetchMany()` (curl_multi, 8 parallel), `cache/chmi_meteo.json`
   + daily `cache/chmi_meteo_meta.json`; falls back to yesterday's file after midnight UTC.
+- `chmi-other-proxy.php` (3.4) — 10 min, reference stations owned by OTHER operators than ČHMÚ
+  (health institutes, regions, cities, industry — Ostrava-Radvanice ZÚ, Brno-Svatoplukova…). The
+  ČHMÚ open data has only ČHMÚ-owned stations; this reads the undocumented JSON behind the chmi.cz
+  maps (`data-provider.chmi.cz/api/data/ovzdusi/stanice/mereni/{PM10|PM2_5|NO2|O3}/1h/{YYYYMMDDHHMM}`,
+  CC BY 4.0 per the chmi.cz footer). Slot = END of the averaging hour (UTC) → `measured_at` = slot − 1 h,
+  same as the opendata `startTime`. `lib/ChmiOther.php` holds the 40-station whitelist (code → name,
+  owner, WGS84 — layer coords are UTM 33N, unused), slot candidates (H may not exist for ~50 min → H−1…),
+  parsing ("18,0" → 18.0, "N/A" → null, gases exactly 0.0 → null) and the merge with the previous slot
+  (per-pollutant `value_times`). Records stay in network `chmi`, id `CHMI_<code>`, with `meta.owner` for
+  the popup; `stale` after 3 h. `collect.php` block 2c stores per-pollutant hours with dedupe (nothing
+  > 4 h); `monitor.php` alerts when the cached slot is > 3 h old. `?debug=1` = probe/layers/missing.
+  Offline test: `tests/test_chmi_other.php` (fixtures = real layers of 2026-10-17 17:00Z). Adding a
+  station = one line in `ChmiOther::STATIONS`; the full ISKO inventory is `../SCOPE_3.4-stations.json`.
 - `ag-proxy.php` (2.9) — 3 min, AirGradient public WORLD feed (no key, ~1.5 MB gzip,
   no bbox param) → `lib/AirGradient.php` filters the CZ bbox, drops `EXCLUDE_IDS`
   (border DE/PL/SK), `offline`, readings > 2 h, PM-less devices; only the CZ subset
