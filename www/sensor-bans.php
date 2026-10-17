@@ -2,7 +2,9 @@
 // sensor-bans.php — veřejný seznam senzorů, které mapa NESMÍ zobrazit
 // GET → { generated, banned: [id…], auto: [{sensor_id, reason}…] }
 //   banned = ruční blokace správce (tabulka sensor_bans v historygraph DB, admin/bans.php)
-//   auto   = automatické příznaky plochého průběhu (SensorQuality), samoléčivé
+//   auto   = automatické příznaky (SensorQuality), samoléčivé: stuck/plateau = plochý
+//            průběh PM za 2 h; od 3.3 indoor = v noci výrazně tepleji a sušeji než nejbližší
+//            meteostanice ČHMÚ do 30 km + stabilní teplota 24 h (senzor v interiéru)
 // Cache 10 min v cache/sensor_flags.json; ban/unban v adminu ji smaže.
 
 require_once __DIR__ . '/config.php';

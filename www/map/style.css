@@ -78,6 +78,8 @@ body {
 }
 .pollutant-chip:hover { background: var(--surface-2); }
 .pollutant-chip.active { background: var(--brand-primary); color: white; }
+/* 3.3.1: na mobilu krátké štítky meteo čipů („🌡 °C", „💧 %"), aby nebyly 2× širší než O₃ */
+.pollutant-chip .chip-short { display: none; }
 .pollutant-chip.pollutant-info {
     color: var(--brand-primary);
     font-size: 14px;
@@ -608,6 +610,8 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
 @media (max-width: 768px) {
     .pollutant-bar { left: 10px; right: 10px; transform: none; max-width: none; }
     .pollutant-chip { font-size: 12px; padding: 7px 11px; }
+    .pollutant-chip .chip-long { display: none; }
+    .pollutant-chip .chip-short { display: inline; }
     /* Obsah lišty centrovaný, ale při přetečení stále posuvný (auto okraje
        na krajních prvcích — justify-content:center by levý kraj ořízl) */
     .pollutant-chip:first-child { margin-left: auto; }

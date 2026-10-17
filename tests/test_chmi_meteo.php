@@ -130,7 +130,7 @@ check(ChmiMeteo::dates(strtotime('2026-10-16 23:59:00 UTC')) === ['20261016', '2
 
 // --- seznam stanic ---
 $n = count(ChmiMeteo::STATIONS);
-check($n >= 40 && $n <= 60, "STATIONS: $n stanic (cíl 40–60; každá = 1 soubor ~100 kB po 15 min)");
+check($n >= 40 && $n <= 65, "STATIONS: $n stanic (cíl 40–65 (3.3: +Poděbrady = 61); každá = 1 soubor ~100 kB po 15 min)");
 check(count(array_unique(array_keys(ChmiMeteo::STATIONS))) === $n, 'STATIONS: WSI unikátní');
 foreach (ChmiMeteo::STATIONS as $wsi => $name) {
     if (!preg_match('/^0-(20000|203)-0-\d+$/', $wsi)) { check(false, "STATIONS: neplatné WSI $wsi"); }

@@ -91,6 +91,9 @@ try {
 
 // 2.8: ručně blokované senzory (admin/bans.php, tabulka sensor_bans) se neukládají.
 // Dříve natvrdo vyloučené jednotky SC 46875 a 7213 jsou v tabulce od jejího vzniku.
+// Automatické příznaky (stuck/plateau, od 3.3 indoor) se tu ZÁMĚRNĚ nepřeskakují: jsou
+// samoléčivé a počítají se z této historie — bez dalších nočních vzorků by příznak
+// „indoor“ po 24 h zmizel a senzor se vracel na mapu. Skrývá ho mapa (sensor-bans.php).
 require_once __DIR__ . '/../lib/SensorQuality.php';
 try {
     $bannedSensors = array_flip(SensorQuality::manualBans($db));

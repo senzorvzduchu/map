@@ -1,3 +1,14 @@
+# 3.3-indoor-flag — Lokální testování (sandbox)
+
+> Stav 3.3: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `3.2-dark-mode`;
+> původní verze změněných souborů: `backup-3.2/`. Server: `.claude/launch.json` → `indoor-sandbox`,
+> port **8133**. Test: `php tests/test_indoor_flag.php` (ALL PASS). Kolektor lokálně: příkaz níže
+> s `PROXY_BASE_URL` = `http://127.0.0.1:8133`. Reálná DB má noční vzorky až po první noci; cestu lze
+> ověřit vložením syntetických nočních řádků (00–05 h: senzor 27 °C / 30 %, `CHMI_M_0-203-0-11617`
+> 5 °C / 95 % hodinově) a smazáním `www/cache/sensor_flags.json` → `sensor-bans.php` má
+> `auto:[{sensor_id, reason:"indoor"}]`, admin řádek s tlačítkem, mapa bez senzoru (`sensorStore.has(id)`
+> = false). Po testu řádky smazat. Podrobně `DEPLOY_3.3.md` §2, §5.
+
 # 3.2-dark-mode — Lokální testování (sandbox)
 
 > Stav 3.2: **ověřeno lokálně 16. 10. 2026**, nenasazeno. Výchozí bod: kopie `3.1-chmi-meteo`;

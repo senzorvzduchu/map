@@ -34,7 +34,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=3.2">
+    <link rel="stylesheet" href="style.css?v=3.3.1">
     <style>
         /* === EMBED: kompaktní rozložení pro iframe (všechny velikosti) === */
         .pollutant-bar { padding: 4px; gap: 2px; }
@@ -70,8 +70,8 @@
         <button class="pollutant-chip" data-pollutant="no2">NO₂</button>
         <button class="pollutant-chip" data-pollutant="o3">O₃</button>
         <button class="pollutant-chip" data-pollutant="noise">🔊 Hluk</button>
-        <button class="pollutant-chip" data-pollutant="temperature">🌡 Teplota</button>
-        <button class="pollutant-chip" data-pollutant="humidity">💧 Vlhkost</button>
+        <button class="pollutant-chip" data-pollutant="temperature" aria-label="Teplota">🌡 <span class="chip-long">Teplota</span><span class="chip-short">°C</span></button>
+        <button class="pollutant-chip" data-pollutant="humidity" aria-label="Vlhkost">💧 <span class="chip-long">Vlhkost</span><span class="chip-short">%</span></button>
         <button class="pollutant-chip pollutant-info" id="infoChip" title="Jak mapa funguje">ℹ</button>
     </div>
 
@@ -129,7 +129,7 @@
     <script src="app.js?v=3.2"></script>
     <script src="interp.js?v=3.0"></script>
     <script src="wind.js?v=2.8"></script>
-    <script src="info.js?v=3.1"></script>
+    <script src="info.js?v=3.3.1"></script>
     <script src="alerts.js?v=2.8"></script>
 </body>
 

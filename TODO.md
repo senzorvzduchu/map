@@ -1,4 +1,64 @@
-# TODO — senzorvzduchu.cz mapa 3.2 (tmavý režim) / 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+# TODO — senzorvzduchu.cz mapa 3.3 (auto-příznak indoor) / 3.2 (tmavý režim) / 3.1 (meteostanice ČHMÚ) / 3.0 (teplota a vlhkost)
+
+## Rekordér dat na VPS (17. 10. 2026) — mimo verze mapy
+
+- [x] **Rekordér běží** od 17. 10. 2026 14:55 UTC na VPS Hostinger (`recorder/` v kořeni projektu,
+      `/srv/svz-recorder/` na VPS, cron po 5 min, bez retence, T/RH i surové PM). Podrobně `KONTEXT.md`
+      sekce „Rekordér na VPS" a `recorder/README.md`. Tím je splněn předpoklad posouzení korekcí podle
+      vlhkosti z `2.9-airgradient/TODO.md`.
+- [x] **Webový náhled rekordéru** (`recorder/web/`, 17. 10. 2026): stav + senzory + graf + CSV za basic auth,
+      nasazen na VPS (`install-web.sh`), ověřen přes ssh tunel. Heslo vypsáno jednou při instalaci
+      (nové: `install-web.sh --reset-password`).
+- [x] DNS A `data` → 31.97.33.229 přidán uživatelem 17. 10. 2026 (ověřeno 1.1.1.1, 8.8.8.8, ns1.active24.cz),
+      certbot vydal certifikát (do 15. 1. 2027, auto-obnova) → **https://data.senzorvzduchu.cz** živě,
+      HTTP přesměrováno, holá IP 404.
+- [x] **Hlídač rekordéru** `recorder/monitor.php` (17. 10. 2026): ntfy.sh téma `senzorvzduchu-monitor`, cron po 15 min,
+      kontroly cron_dead / fail / empty / disk / db_growth / web / db, opakování po 6 h, zpráva OK po zotavení.
+- [ ] Externí dead-man ping pro výpadek celé VPS (healthchecks.io zdarma: ping z cronu po úspěšném `collect.php`,
+      e-mail když pingy ustanou) — potřebuje účet uživatele; bez pokynu neprovádět.
+- [ ] Po týdnu: `status.php` nebo https://data.senzorvzduchu.cz (chyby v `runs`, velikost DB, počet senzorů),
+      velikost `/srv/svz-recorder/data`. (Pozn.: `chmi` vkládá nové řádky 1× za hodinu kolem :40 UTC — 0 nových
+      v ostatních bězích je normální, ověřeno 17. 10. 2026.)
+- [ ] Zpětný import historie: SC archiv (`archive.sensor.community`, denní CSV), ČHMÚ opendata, SCK API —
+      zápis do `measurements` stejným schématem (PK dedupe). PA/AG/Libčich zpětně nejsou.
+- [ ] Offsite kopie `backup/recorder-latest.db` (zatím jen na VPS).
+- [x] Nosíček + Dancing Curves z VPS smazány 17. 10. 2026 15:04 UTC (zálohy lokálně + `/root/nc-final`,
+      `/root/dc-final` na VPS — po ~měsíci smazat).
+- [x] DNS nosicheck.cz (Active24/Websupport admin): A `*`, `@`, `www` → 31.97.33.229 smazány uživatelem
+      17. 10. 2026, ověřeno z ns1.websupport.cz, 1.1.1.1 a 8.8.8.8 (žádný A záznam). Pošta (MX Active24,
+      SPF/DMARC, mail/webmail/smtp/pop3/imap, autodiscover) ponechána; `admin.nosicheck.cz` → 37.9.175.24
+      (Active24 hosting) ponechán jako neškodný zbytek.
+- [ ] Nápad: datový portál za přihlášením nad DB rekordéru (prodej reportů/analýz) — před tím ověřit
+      licence zdrojů (ODbL, CC BY-SA, PurpleAir, Libčich) a statut z.s.; bez pokynu neprovádět.
+
+## 3.3 — před nasazením / po nasazení
+
+- [x] Auto-příznak `indoor` implementován a ověřen lokálně 16. 10. 2026 (`DEPLOY_3.3.md` §5):
+      `SensorQuality::indoorFlags()`, admin, info.js, test `tests/test_indoor_flag.php` ALL PASS.
+- [x] `ChmiMeteo::STATIONS` +Poděbrady (`0-203-0-11617`, 5,5 km od páru AG 61860/78554) — bez ní nemá
+      Polabí žádnou referenci do 30 km (nejbližší Jičín 41 km). 61 stanic.
+- [ ] Nasadit 3.0 + 3.1 + 3.2 + 3.3 najednou (`DEPLOY_3.3.md` §1–2, 14 souborů), doplnit §6 „Ověřeno živě".
+- [ ] **Ráno po první celé noci** po nasazení: `/admin/bans.php` → řádek `AG_61860 · indoor` (ΔT, ΔRH, rozkmit,
+      n); `/sensor-bans.php` → `auto` obsahuje `{"sensor_id":"AG_61860","reason":"indoor"}`; mapa bez něj.
+      Když se neobjeví: `chmi-meteo-proxy.php?debug=1` (Poděbrady v `stations`, ne v `missing`), v DB noční
+      řádky `CHMI_M_0-203-0-11617` + `AG_61860` (T/RH 00–05 h). Ruční ban zůstává jistější záloha.
+- [ ] Po týdnu projít seznam auto-příznaků `indoor` na všech sítích (SC má `location.indoor`, ale majitel
+      ho nemusí nastavit) — falešné shody? Prahové hodnoty jsou `SensorQuality::INDOOR_*`.
+- [ ] 17 komunitních senzorů nemělo (před Poděbrady) stanici do 30 km (Polabí Poděbrady–Kutná Hora);
+      po nasazení ověřit, kolik jich zbývá bez reference (`communityCoords()` × `referenceStations()`).
+      Kandidáti z meta1 do 30 km od Poděbrad s 10m souborem: Čáslav `0-203-0-11622`, Nový Bydžov `0-203-0-11625`.
+- [ ] Léto: bez topení je ΔT menší — sledovat, zda 6 °C / 15 b. stačí; případně sezónní práh.
+- [ ] **Auto-příznak `heated` (ohřev krytu sluncem)** — stejný mechanismus jako `indoor`, ale denní:
+      medián (T_senzor − T_ČHMÚ nejbližší do 30 km) v 09–17 h > 8 °C při ≥ 4 párech **a zároveň** noční
+      ΔT (00–05 h) < 4 °C (čidlo v noci sedí = je venku, jen se ohřívá; tím se odliší od `indoor`).
+      Důsledek: skrýt jen teplotu a vlhkost senzoru (šedý marker / vynechat na vrstvách T a RH),
+      PM ponechat; `sensor-bans.php` `auto[].reason = 'heated'`, admin `detail` = ΔT den / ΔT noc / stanice.
+      Konkrétní případ 17. 10. 2026: **SC_70222/70223** (Olomouc, 5 km od ČHMÚ Olomouc-Holice):
+      noc 4–6 °C vs ČHMÚ 0,4–2,9 °C (Δ ~3 °C), ale 12–14 h 28,8 / 32,4 / 30,1 °C a 20 % RH vs
+      ČHMÚ 14–16 °C / 43 % (Δ 13–17 °C); PM2.5 5 µg/m³ v normě. Žádný dnešní příznak nespustil
+      (živé auto-příznaky hlídají jen PM) a `indoor` z 3.3 ho správně nechytí (noční Δ malá,
+      denní rozkmit 28 °C). Zapsáno na pokyn uživatele 17. 10. 2026 — **bez pokynu neprovádět**;
+      navazuje na body „ohřev krytů" v 3.0/3.1 níže.
 
 ## 3.2 — před nasazením / po nasazení
 
@@ -7,13 +67,18 @@
       zablokovat (DEPLOY_2.9 tvrdil opak). Od 3.2 jde `AG_<id>` i `CHMI_M_` ne (ČHMÚ se neblokuje).
 - [x] Nasazeno 3.0 + 3.1 + 3.2 najednou 16. 10. 2026 ~22:40 (ruční FTP uživatelem, 13 souborů),
       živě ověřeno (`DEPLOY_3.2.md` §6, `DEPLOY_3.1.md` §7).
-- [ ] Po ~1 dni: 24h grafy teploty/vlhkosti plné (komunitní i `CHMI_M_`); po 5 dnech 5denní.
+- [x] Po ~1 dni: 24h grafy teploty/vlhkosti plné (komunitní i `CHMI_M_`) — ověřeno 17. 10. 2026 14:45,
+      17/24 slotů od 22:00 (přesně od nasazení), auto-příznaky prázdné, meteo proxy 60/60 za 0,89 s.
+      Zjištění: cron `collect.php` běží reálně po 15 min (řádky v :00/:15/:30/:45), ne po 5.
+- [ ] Po 5 dnech 5denní graf.
 - [ ] Po týdnu: velikost `air_quality_history.db` na serveru (odhad ~14–15 MB místo 10).
-- [ ] **Zablokovat AG_61860 „Location 2"** (Poděbrady, stejné souřadnice jako 78554 „Předhradí"):
+- [ ] **Zablokovat AG_61860 „Location 2"** (Poděbrady, stejné souřadnice jako 78554 „Předhradí") — od 3.3
+      ho má chytit auto-příznak `indoor` (viz výše), ruční ban je přesto jistější:
       16. 10. 2026 večer 27,5 °C / 29 % RH vedle 13,5 °C / 59 % → zjevně v interiéru (PM2.5 37 vs 21).
       Admin: `/admin/bans.php?token=…`, ID `AG_61860`, důvod „interiér". Funguje až po nasazení 3.2
       (oprava `normalizeId`); do té doby jen přes `AirGradient::EXCLUDE_IDS` (vyžaduje FTP).
-- [ ] **Automatická detekce interiérových senzorů** (všechny komunitní sítě) — samostatná verze:
+- [x] **Automatická detekce interiérových senzorů** (všechny komunitní sítě) → **hotovo jako 3.3**
+      (`3.3-indoor-flag/`, `DEPLOY_3.3.md`). Původní spec:
       od 3.0 má DB T/RH každých 5 min, od 3.1 referenci ČHMÚ. Heuristika v `SensorQuality` (jako
       auto-příznaky PM, samoléčivá, s tlačítkem „Zablokovat trvale" v adminu): za posledních 24 h
       v nočních hodinách (0–5 h místního času, bez slunce) medián (T_senzor − T_ČHMÚ nejbližší
@@ -68,7 +133,7 @@
 - [x] Nasazena 2.9 (16. 10. 2026 ~16:00, ruční FTP, živě ověřeno — `DEPLOY_2.9.md` §7).
 - [x] Ověřeno `/ag-proxy.php?debug=1` → `http_code: 200` z produkce (16. 10. 2026; hosting dosáhne na
       api.airgradient.com; lokálně OK 16. 10. 2026).
-- [ ] Po ~1 dni ověřit, že se plní historie `AG_` (24h graf v popupu AirGradient senzoru).
+- [x] Po ~1 dni ověřit, že se plní historie `AG_` — ověřeno 17. 10. 2026 (AG_65150 PM2.5 23/24, T/RH 17/24).
 - [ ] Rozhodnout o hraničních senzorech: teď **vyřazeny** podle ID (`AirGradient::EXCLUDE_IDS`,
       6 ks DE/PL/SK) stejně jako u PurpleAir. Alternativa = nechat (jako Sensor.Community).
       Seznam je ruční — nové zahraniční senzory v boxu se objeví na mapě, dokud se nepřidají.

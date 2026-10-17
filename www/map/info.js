@@ -21,7 +21,7 @@ function openInfoModal() {
             <summary>📡 Senzorové sítě</summary>
             <table class="info-table">
                 <tr><th>Síť</th><th>Co to je</th><th>Váha</th></tr>
-                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Teplotu a vlhkost dodává jiná sada stanic ČHMÚ: 60 meteorologických stanic (otevřená data ČHMÚ, 10minutové hodnoty, krajská a okresní města, horské stanice). Na mapě jsou referencí s černým okrajem; stanice kvality ovzduší se při volbě teploty nebo vlhkosti skryjí.</td><td>1.0</td></tr>
+                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Teplotu a vlhkost dodává jiná sada stanic ČHMÚ: 61 meteorologických stanic (otevřená data ČHMÚ, 10minutové hodnoty, krajská a okresní města, horské stanice). Na mapě jsou referencí s černým okrajem; stanice kvality ovzduší se při volbě teploty nebo vlhkosti skryjí.</td><td>1.0</td></tr>
                 <tr><td><strong>PurpleAir</strong></td><td>Komunitní optické senzory. Hodnoty PM2.5 jsou korigované vzorcem US EPA (Barkjohn 2021).</td><td>0.25</td></tr>
                 <tr><td><strong>Smart Citizen</strong></td><td>Open-source stanice (Fab Lab Barcelona). Jediná síť s měřením <strong>hluku</strong> (MEMS mikrofon, dB(A)).</td><td>0.15</td></tr>
                 <tr><td><strong>Sensor.Community</strong></td><td>Největší DIY síť v ČR — levné optické senzory PM2.5/PM10, které si lidé staví sami.</td><td>0.10</td></tr>
@@ -48,18 +48,12 @@ function openInfoModal() {
             <p><strong>Hluk</strong> — dB(A) ze stanic Smart Citizen. Hodnota platí
             pro nejbližší okolí stanice.</p>
             <p><strong>Teplota a vlhkost</strong> — referencí jsou meteorologické
-            stanice ČHMÚ (černý okraj): čidlo v meteorologické budce 2&nbsp;m nad
-            zemí, 10minutové hodnoty, soubor ČHMÚ vychází jednou za hodinu, takže
-            hodnota je 10–85 minut stará. Ostatní body jsou čidla komunitních senzorů
-            (Sensor.Community, PurpleAir, Smart Citizen, Libčich, AirGradient).
-            Čidlo sedí v krytu senzoru, ne v meteorologické budce: na slunci
-            ukazuje o několik °C víc, u PurpleAir odečítáme výrobcem
-            dokumentovaných 4,4&nbsp;°C a přičítáme 4&nbsp;% vlhkosti. Vlhkost
-            95–100&nbsp;% bývá orosené čidlo. Komunitní hodnoty jsou orientační;
-            porovnání s nejbližší stanicí ČHMÚ ukáže, o kolik je čidlo v krytu
-            přehřáté. Mapa ukazuje rozdíly mezi místy (tepelný ostrov města,
-            inverze, mlha) a vlhkost, při které optické prachové senzory
-            nadhodnocují PM.</p>
+            stanice ČHMÚ (černý okraj, budka 2&nbsp;m nad zemí, hodnota až hodinu
+            stará). Ostatní body jsou čidla komunitních senzorů v krytu: na slunci
+            ukazují o několik °C víc, vlhkost 95–100&nbsp;% bývá orosené čidlo.
+            Hodnoty jsou orientační, srovnávejte s nejbližší stanicí ČHMÚ.
+            U PurpleAir odečítáme podle výrobce 4,4&nbsp;°C a přičítáme 4&nbsp;%
+            vlhkosti.</p>
         </details>
 
         <details class="info-sec">
@@ -78,13 +72,6 @@ function openInfoModal() {
 
         <details class="info-sec">
             <summary>🗺️ Interpolace</summary>
-            <p>Barevná plocha mezi senzory je <strong>odhad, ne měření</strong>.
-            Počítá se metodou IDW (inverse distance weighting, mocnina&nbsp;2):
-            každý senzor ovlivňuje okolí tím víc, čím je blíž, a jeho vliv se
-            násobí vahou sítě (ČHMÚ&nbsp;1.0 &gt; PurpleAir&nbsp;0.25 &gt;
-            Smart&nbsp;Citizen&nbsp;0.15 &gt; Sensor.Community, Libčich a AirGradient&nbsp;0.10).
-            V okolí referenční stanice tak převáží její údaj i proti několika
-            blízkým amatérským senzorům.</p>
             <p><strong>Vítr odhad protahuje po směru proudění:</strong> u každého
             senzoru se vzorkuje aktuální vítr (Open-Meteo) a jeho vliv se natahuje
             po větru (až 2× při silném větru) a zkracuje proti větru. Za bezvětří
@@ -107,13 +94,11 @@ function openInfoModal() {
             <p>Po kliknutí na senzor se zobrazí graf zvolené látky. Výchozí pohled
             je <strong>24 h historie + 24 h výhled</strong> („teď" uprostřed),
             přepínač „5 dní" ukáže surové body za pět dní bez předpovědi.
-            V 24h pohledu je jeden bod za hodinu. Z 5minutových měření dané
-            hodiny se bere <strong>nejvyšší</strong>, ne průměr, aby krátká
+            V 24h pohledu je jeden bod za hodinu. Z měření dané hodiny se bere <strong>nejvyšší</strong>, ne průměr, aby krátká
             špička v grafu zůstala. U teploty a vlhkosti je to naopak průměr
             hodiny.</p>
-            <p>Komunitní senzory ukládáme každých 5 minut, stanice kvality ovzduší
-            ČHMÚ a Libčich jako hodinové průměry, meteorologické stanice ČHMÚ po
-            10 minutách. Šedý pruh v grafu je výpadek dat. Popup upozorní,
+            <p>Komunitní senzory ukládáme každých 15 minut, stanice kvality ovzduší
+            ČHMÚ a Libčich jako hodinové průměry, meteorologické stanice ČHMÚ jednou za hodinu. Šedý pruh v grafu je výpadek dat. Popup upozorní,
             když senzor dlouhodobě hlásí konstantní hodnotu (možné ucpání) nebo
             když zdroj přestal aktualizovat.</p>
         </details>
@@ -123,16 +108,12 @@ function openInfoModal() {
             <p>Pravá polovina grafu je <strong>modelová předpověď ČHMÚ</strong>
             na 24 hodin z otevřených dat ČHMÚ (pro každý kraj, pro PM2.5, PM10,
             NO₂ a O₃). Hluk, teplota ani vlhkost se nepředpovídají.</p>
-            <p><strong>Proč předpověď přepočítáváme.</strong> ČHMÚ publikuje
-            hodnotu za celý kraj — medián přes celé území včetně lesů a polí.
-            Městský senzor proto skoro vždy měří víc, než říká krajské číslo,
-            v Praze i trojnásobně. Zachováváme tvar předpovědi, ale její úroveň
-            přepočítáme na to, co daný senzor právě měří: průměr senzoru za
-            poslední 3 hodiny vydělíme hodnotou modelu za stejné 3 hodiny a celou
-            křivku předpovědi tímto poměrem vynásobíme. Poměr je omezen na
-            třetinu až trojnásobek, aby vadný senzor předpověď nezkreslil. Když
-            senzor za poslední 3 hodiny nic nehlásil, poměr se spočítá z měřené
-            mapy ČHMÚ pro stejný kraj; když není ani ta, ukážeme model beze změny.</p>
+            <p><strong>Proč předpověď přepočítáváme.</strong> ČHMÚ předpovídá
+            medián za celý kraj včetně lesů a polí; městský senzor měří skoro
+            vždy víc. Tvar předpovědi zachováváme, úroveň posouváme podle poměru
+            senzor&nbsp;/&nbsp;model za poslední 3&nbsp;hodiny (omezeno na třetinu
+            až trojnásobek). Bez čerstvých dat senzoru se poměr bere z měřené mapy
+            ČHMÚ pro kraj, jinak ukážeme model beze změny.</p>
             <p><strong>Světlejší pás kolem čáry</strong> je rozpětí mezi čtvrtinou
             nejčistších a nejšpinavějších míst kraje, ne nejistota předpovědi.
             Spolehlivý je průběh (kdy se má zhoršit a polevit), absolutní čísla
@@ -159,15 +140,17 @@ function openInfoModal() {
             <summary>🛠️ Kontrola kvality a blokace senzorů</summary>
             <p>Komunitní senzory jsou levné a občas se rozbijí. Mapa proto:</p>
             <p>• <strong>zahazuje nesmyslné hodnoty</strong> — PM2.5 nad 500 µg/m³
-            a senzory Sensor.Community, které hlásí víc než pětinásobek mediánu
-            sousedů do 30 km (min. 60 µg/m³);</p>
-            <p>• <strong>automaticky skrývá „zamrzlé" senzory</strong> — když se
-            hodnota PM za poslední 2 hodiny prakticky nemění (odchylka pod 0,5 při
-            průměru nad 10 µg/m³) nebo drží vysokou rovinu (odchylka pod 3 při
-            průměru nad 60 µg/m³, typicky ucpaný senzor). Skrytí se samo zruší,
-            jakmile senzor zase kolísá;</p>
+            a senzory Sensor.Community s více než pětinásobkem mediánu sousedů
+            do 30 km;</p>
+            <p>• <strong>automaticky skrývá „zamrzlé" senzory</strong> — hodnota PM
+            se 2 hodiny prakticky nemění nebo drží vysokou rovinu (ucpaný senzor).
+            Skrytí se zruší, jakmile senzor zase kolísá;</p>
+            <p>• <strong>automaticky skrývá senzory v interiéru</strong> — v noci
+            (0–5 h) o víc než 6 °C teplejší a o 15 bodů sušší než nejbližší stanice
+            ČHMÚ do 30 km, s denním rozkmitem teploty pod 4 °C. Hodnotí se denně
+            znovu;</p>
             <p>• <strong>ručně blokuje</strong> senzory, které správce po ověření
-            označí za vadné nebo umístěné v interiéru.</p>
+            označí za vadné nebo v interiéru.</p>
             <p>Skrytý senzor chybí na mapě i v interpolaci. Stanice ČHMÚ se
             neblokují nikdy. Myslíte, že je nějaký senzor vadný? Napište nám.</p>
         </details>

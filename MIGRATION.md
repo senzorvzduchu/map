@@ -1,3 +1,25 @@
+# 3.3 — auto-příznak „indoor" (sandbox, ověřeno lokálně 16. 10. 2026)
+
+Výchozí bod: `3.2-dark-mode` (sandbox, nenasazeno). Původní verze změněných souborů:
+`backup-3.2/`. Runbook: `DEPLOY_3.3.md` (nasazuje se 3.0 + 3.1 + 3.2 + 3.3 najednou; produkce je 2.9).
+
+| Soubor | Změna |
+|---|---|
+| `www/lib/SensorQuality.php` | `autoFlags($db, $now, $refs, $coords)` = `flatnessFlags()` (stuck/plateau, nezměněno, nově vrací i `detail`) + `indoorFlags()` v `try/catch`; **nové**: `referenceStations()` (`cache/chmi_meteo.json` → `CHMI_M_<wsi>` + souřadnice), `communityCoords()` (5 proxy cache → `SC_/SCK_/PA_/LIBCICH_/AG_` → lat/lng), `nightWindows()` (00–05 h Europe/Prague přes DateTime, DST-safe), `distanceKm()`, `median()`, `indoorFlags()` (nejbližší stanice ≤ 30 km, noční řádky ČHMÚ po hodinových slotech, agregát rozkmitu 24 h, komunitní noční řádky streamované), `evaluateIndoor()` (párování ±1 slot, ≥ 6 vzorků, ΔT > 6, ΔRH > 15, rozkmit < 4); konstanty `INDOOR_*`; výstup `{sensor_id, reason: 'indoor', value_type: 'temperature', mean: ΔT, std: ΔRH, n, range, ref, ref_km, detail}` |
+| `www/lib/ChmiMeteo.php` | `STATIONS` +1: `0-203-0-11617` Poděbrady (reference pro Polabí; 61 stanic) |
+| `www/sensor-bans.php` | jen komentář (tvar výstupu stejný, `reason` i `indoor`) |
+| `www/admin/bans.php` | tabulka auto-příznaků Senzor / Příznak / Veličina / **Detail** / n; popis indoor; důvod banu „Auto-příznak indoor (senzor v interiéru), potvrzeno správcem" |
+| `www/historygraph/collect.php` | jen komentář: auto-příznaky se záměrně nepřeskakují (samoléčení potřebuje další noc) |
+| `www/map/info.js` | sekce „Kontrola kvality": odrážka „automaticky skrývá senzory v interiéru" |
+| `www/map/index.html`, `embed.html` | jen `info.js?v=3.3` |
+| `tests/test_indoor_flag.php` | **NOVÝ** — offline test v SQLite v paměti (ALL PASS, 34 kontrol): pár Poděbrady, senzor na slunci, bez stanice, zvlhčovač, málo vzorků, bez RH, ČHMÚ, samoléčení, loadery cache |
+| `.claude/launch.json` (kořen) | `indoor-sandbox`, port 8133 |
+
+Beze změny: `app.js` (filtruje `auto[].sensor_id` bez ohledu na `reason`), `interp.js` (čte `sensorStore`,
+kde skrytý senzor není), `style.css`, ostatní proxy, `config.php`, cron, schéma DB.
+
+---
+
 # 3.2 — tmavý režim (sandbox, ověřeno lokálně 16. 10. 2026)
 
 Výchozí bod: `3.1-chmi-meteo` (sandbox, nenasazeno). Původní verze změněných souborů:

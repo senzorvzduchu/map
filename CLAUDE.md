@@ -150,14 +150,23 @@ from nosicheck.cz — keep them in sync; `tests/test_alerts.php`,
   no accounts). Recommend `define('ADMIN_TOKEN', …)` in config.php.
 - Public `sensor-bans.php` → `{banned, auto}`; app.js filters in
   `upsertSensor` (markers AND interpolation), `collect.php` skips manual bans.
-- Auto flags = flatness over 2 h (`SensorQuality::autoFlags`), PM only, ≥12
-  samples, never ČHMÚ; self-healing, not stored.
+- Auto flags (`SensorQuality::autoFlags`, self-healing, not stored, never ČHMÚ):
+  `stuck`/`plateau` = PM flatness over 2 h, ≥12 samples (`flatnessFlags`); since 3.3
+  `indoor` = night (00–05 Europe/Prague, last 24 h) median T_sensor − T_ČHMÚ > 6 °C AND
+  median RH_ČHMÚ − RH_sensor > 15 pts AND 24 h T range < 4 °C, ≥ 6 paired samples,
+  nearest `CHMI_M_` station ≤ 30 km (`indoorFlags`; coords from the proxy caches via
+  `communityCoords()`, stations from `cache/chmi_meteo.json` via `referenceStations()`;
+  thresholds = `INDOOR_*` constants). Every flag carries `detail` for the admin table.
+  `collect.php` deliberately keeps storing auto-flagged sensors (the indoor flag needs
+  next night's samples to re-evaluate; skipping would make it flap daily). Offline test:
+  `tests/test_indoor_flag.php`.
 - `SensorQuality::normalizeId()` is the single gate for ban ids: `SC_`, `SCK_`, `PA_`,
   `LIBCICH_` and (since 3.2) `AG_`; a bare number means `SC_`. Add a new community
   network's prefix THERE or its sensors cannot be banned. ČHMÚ (`CHMI_`, `CHMI_M_`) never.
-- Indoor units (e.g. AG_61860 "Location 2" next to 78554 "Předhradí", Poděbrady) are a
-  known gap: ban manually; an automatic night-time T/RH-vs-ČHMÚ heuristic is specced in
-  `TODO.md`.
+- Indoor units (e.g. AG_61860 "Location 2" next to 78554 "Předhradí", Poděbrady) are caught
+  by the `indoor` flag since 3.3 — only where a ČHMÚ meteo station is within 30 km, so
+  `ChmiMeteo::STATIONS` got Poděbrady (`0-203-0-11617`). A manual ban is still the safer
+  permanent fix (admin "Zablokovat trvale" on the flag row).
 
 ## 📍 Geolocation policy
 

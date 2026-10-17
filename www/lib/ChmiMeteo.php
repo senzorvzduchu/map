@@ -120,6 +120,9 @@ final class ChmiMeteo
         '0-20000-0-11679' => 'Ústí nad Orlicí',
         // Horské a venkovské reference
         '0-20000-0-11628' => 'Košetice, Křešín, Kramolín',
+        // 3.3: reference pro auto-příznak „indoor“ v Polabí — pár AirGradient 61860/78554 v Poděbradech
+        // neměl žádnou stanici do 30 km (nejbližší Jičín 41 km). 10m soubor má T i H (ověřeno 16. 10. 2026).
+        '0-203-0-11617'   => 'Poděbrady',
         '0-20000-0-11787' => 'Lysá hora',
         '0-20000-0-11653' => 'Sněžka, Poštovna',
         '0-20000-0-11457' => 'Churáňov',

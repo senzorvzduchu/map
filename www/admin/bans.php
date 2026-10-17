@@ -4,8 +4,8 @@
 //
 // - Blokovat lze jen SC_/SCK_/PA_/LIBCICH_/AG_ (ČHMÚ nikdy); holé číslo = SC_. (AG_ od 3.2)
 // - Blokovaný senzor zmizí z mapy i z interpolace (sensor-bans.php) a kolektor
-//   jeho hodnoty neukládá. Automatické příznaky (stuck/plateau) jsou jen k nahlédnutí —
-//   samy se zruší, jakmile senzor zase kolísá.
+//   jeho hodnoty neukládá. Automatické příznaky (stuck/plateau, od 3.3 indoor) jsou jen
+//   k nahlédnutí — samy se zruší, jakmile senzor zase kolísá / je v noci jako okolí.
 // - Ban/unban smaže cache/sensor_flags.json, aby se změna projevila hned.
 //
 // Pozn.: token v URL zůstane v historii prohlížeče správce. Doporučeno definovat
@@ -122,24 +122,23 @@ $tok = $h($token);
 
 <h2>Automatické příznaky (<?= count($auto) ?>)</h2>
 <div class="box">
-  <p class="muted">Poslední 2 h, ≥ 12 vzorků, jen PM: <em>stuck</em> = směrodatná odchylka &lt; 0,5 při průměru &gt; 10 µg/m³; <em>plateau</em> = odchylka &lt; 3 při průměru &gt; 60 µg/m³. Tyto senzory mapa skrývá automaticky; příznak zmizí, jakmile senzor zase kolísá. Trvalý problém → zablokovat ručně.</p>
+  <p class="muted"><em>stuck</em> / <em>plateau</em>: poslední 2 h, ≥ 12 vzorků, jen PM — směrodatná odchylka &lt; 0,5 při průměru &gt; 10 µg/m³, resp. &lt; 3 při průměru &gt; 60 µg/m³ (zamrzlý / ucpaný senzor). <em>indoor</em> (3.3): za posledních 24 h v nočních hodinách 0–5 h medián teploty o &gt; 6 °C výš a medián vlhkosti o &gt; 15 bodů níž než nejbližší meteostanice ČHMÚ do 30 km, a zároveň rozkmit teploty za 24 h &lt; 4 °C (≥ 6 párových vzorků) — senzor v interiéru. Tyto senzory mapa skrývá automaticky; příznak zmizí sám (kolektor je dál ukládá). Trvalý problém → zablokovat trvale.</p>
 <?php if (!$auto): ?><p class="muted">Žádné.</p><?php else: ?>
   <table>
-    <tr><th>Senzor</th><th>Příznak</th><th>Látka</th><th>Průměr</th><th>Odchylka</th><th>n</th><th></th></tr>
+    <tr><th>Senzor</th><th>Příznak</th><th>Veličina</th><th>Detail</th><th>n</th><th></th></tr>
     <?php foreach ($auto as $f): ?>
     <tr>
       <td><code><?= $h($f['sensor_id']) ?></code></td>
       <td><?= $h($f['reason']) ?></td>
       <td><?= $h($f['value_type']) ?></td>
-      <td><?= $h($f['mean']) ?></td>
-      <td><?= $h($f['std']) ?></td>
+      <td><?= $h($f['detail'] ?? ($f['mean'] . ' / ' . $f['std'])) ?></td>
       <td><?= $h($f['n']) ?></td>
       <td>
         <form method="post" style="display:inline">
           <input type="hidden" name="token" value="<?= $tok ?>">
           <input type="hidden" name="action" value="ban">
           <input type="hidden" name="sensor_id" value="<?= $h($f['sensor_id']) ?>">
-          <input type="hidden" name="reason" value="Auto-příznak <?= $h($f['reason']) ?>, potvrzeno správcem">
+          <input type="hidden" name="reason" value="Auto-příznak <?= $h($f['reason']) ?><?= $f['reason'] === 'indoor' ? ' (senzor v interiéru)' : '' ?>, potvrzeno správcem">
           <button type="submit" class="secondary">Zablokovat trvale</button>
         </form>
       </td>
