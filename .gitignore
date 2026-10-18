@@ -58,3 +58,6 @@ www/cache/forecast/
 backup/
 backup-*/
 EMAIL_ADMIN_LIBCICH.md
+
+# Any config.php anywhere (a root-level copy appeared 18. 10. 2026; must never be staged)
+config.php
