@@ -26,7 +26,7 @@
 - [x] DNS A `data` → 31.97.33.229 přidán uživatelem 17. 10. 2026 (ověřeno 1.1.1.1, 8.8.8.8, ns1.active24.cz),
       certbot vydal certifikát (do 15. 1. 2027, auto-obnova) → **https://data.senzorvzduchu.cz** živě,
       HTTP přesměrováno, holá IP 404.
-- [x] **Hlídač rekordéru** `recorder/monitor.php` (17. 10. 2026): ntfy.sh téma `senzorvzduchu-monitor`, cron po 15 min,
+- [x] **Hlídač rekordéru** `recorder/monitor.php` (17. 10. 2026): ntfy.sh téma z `recorder/config.php` (stejné jako `NTFY_TOPIC` mapy), cron po 15 min,
       kontroly cron_dead / fail / empty / disk / db_growth / web / db, opakování po 6 h, zpráva OK po zotavení.
 - [ ] Externí dead-man ping pro výpadek celé VPS (healthchecks.io zdarma: ping z cronu po úspěšném `collect.php`,
       e-mail když pingy ustanou) — potřebuje účet uživatele; bez pokynu neprovádět.
@@ -197,8 +197,10 @@
 - [x] **Zrcadlit na GitHub** — hotovo 18. 10. 2026: tato složka je checkout
       https://github.com/senzorvzduchu/map (veřejné, `main`, tagy `v2.5`–`v3.4` podle složek verzí).
       Mimo repo: `config.php`, cache, DB, `backup*/`, `EMAIL_ADMIN_LIBCICH.md`. Deploy zůstává ruční FTP.
-- [ ] Téma ntfy `senzorvzduchu-monitor` je natvrdo v `www/historygraph/monitor.php` (a ve veřejném repu):
-      přesunout do `config.php` a téma přejmenovat.
+- [x] Téma ntfy bylo natvrdo v `www/historygraph/monitor.php` (a ve veřejném repu) — hotovo 18. 10. 2026:
+      čte se z konstanty `NTFY_TOPIC` v `config.php` (bez ní se push přeskočí a zaloguje chyba).
+      Zbývá ručně: nový náhodný název do `www/config.php` na hostingu, stejný do `recorder/config.php` na VPS
+      (klíč `ntfy_topic`), přepsat odběr v aplikaci ntfy, nahrát FTP `monitor.php` + `config.example.php` + `DOCUMENTATION.md`.
 - [ ] Do `config.php` na serveru přidat `ADMIN_TOKEN` (jinak admin blokací používá CRON_TOKEN).
 - [ ] Očima zkontrolovat podklad „Barevná" v normálním okně.
 - [ ] Sledovat spotřebu CARTO dlaždic (2 vrstvy místo 1; free tier 5 M/měsíc).

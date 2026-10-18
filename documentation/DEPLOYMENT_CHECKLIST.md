@@ -6,7 +6,7 @@ All steps completed and verified. Map live at https://senzorvzduchu.cz/map/
 
 **Iteration 9 update — Database write monitor (2026-03-22):**
 - [x] `www/historygraph/monitor.php` created and uploaded — checks DB freshness, alerts via ntfy.sh
-- [x] ntfy.sh notifications tested and working (topic: `senzorvzduchu-monitor`)
+- [x] ntfy.sh notifications tested and working (topic name is private — `NTFY_TOPIC` in `config.php` since 18. 10. 2026)
 - [x] CRON job set up: `*/15 * * * * curl -s "https://senzorvzduchu.cz/historygraph/monitor.php?token=TOKEN"`
 
 **Iteration 8 update — Quality check false positive fix (2026-03-22):**

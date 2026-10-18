@@ -25,7 +25,7 @@ Legend: ✅ = tracked in git · ⛔ = gitignored (not pushed to GitHub)
 .gitignore                      ✅ Git exclusion rules
 README.md                       ✅ GitHub landing page
 www/
-├── config.php                  ⛔ Secrets (CRON_TOKEN, PURPLEAIR_API_KEY)
+├── config.php                  ⛔ Secrets (CRON_TOKEN, PURPLEAIR_API_KEY, NTFY_TOPIC)
 ├── config.example.php          ✅ Committed template (placeholder values only)
 ├── crontoken.txt               ⛔ Duplicate of token (local only)
 ├── sc-proxy.php                ✅ Caching proxy for Sensor.Community API
@@ -172,10 +172,12 @@ define('CRON_TOKEN', 'your_hex_token');          // protects collect.php endpoin
 define('ALLOWED_DOMAIN', 'https://senzorvzduchu.cz'); // CORS restriction
 define('USER_AGENT', 'AirQualityMonitor/1.0 (senzorvzduchu.cz)');
 define('PURPLEAIR_API_KEY', 'your-read-api-key');  // PurpleAir Read API key
+define('NTFY_TOPIC', 'svz-monitor-xxxxxxxxxxxx');   // ntfy.sh topic for monitor.php alerts (random, unguessable)
 ```
 
 - **Never commit this file.** Template is `config.example.php`.
-- Required by: `sc-proxy.php`, `chmi-proxy.php`, `pa-proxy.php`, `collect.php`
+- Required by: `sc-proxy.php`, `chmi-proxy.php`, `pa-proxy.php`, `collect.php`, `monitor.php`
+- `NTFY_TOPIC` is a secret too: whoever knows the topic name can read the alerts or push spam to the subscribed phone. Generate it with `openssl rand -hex 6` (→ `svz-monitor-<12 hex>`), never commit it, and keep the VPS recorder (`recorder/config.php`, key `ntfy_topic`) on the same name so one ntfy subscription covers both watchers.
 - To generate a new token: `openssl rand -base64 32` (SSH) or PowerShell:
   ```powershell
   $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
@@ -254,7 +256,8 @@ CREATE INDEX idx_sensor_type ON measurements (sensor_id, value_type, measured_at
 - Checks `MAX(measured_at)` in the `measurements` table
 - If no new data for 20+ minutes (`$stale_threshold = 1200`): sends push notification via **ntfy.sh**
 - Cooldown: max 1 alert per 2 hours (`$cooldown_seconds = 7200`), tracked in `monitor_last_alert.txt`
-- ntfy topic: `senzorvzduchu-monitor` — subscribe at https://ntfy.sh/senzorvzduchu-monitor or via ntfy mobile app
+- ntfy topic: read from the `NTFY_TOPIC` constant in `config.php` (not in the repo). Subscribe the ntfy mobile app (or https://ntfy.sh/<topic>) to that name.
+- If `NTFY_TOPIC` is undefined or empty, the alert is **not** sent: the script writes an `error_log()` entry, prints `ALERT NOT SENT (NTFY_TOPIC missing in config.php): ...` and does not start the cooldown, so it retries every run until the constant is added.
 - Output: `OK: Data is fresh (last write X min ago)` or `ALERT SENT: ...`
 
 ### `get_history.php` — History API endpoint
@@ -422,7 +425,7 @@ Source code + documentation + deployment config template. See [`.gitignore`](../
 
 | File / Path | Reason |
 |---|---|
-| `www/config.php` | Contains `CRON_TOKEN` and `PURPLEAIR_API_KEY` — secrets |
+| `www/config.php` | Contains `CRON_TOKEN`, `PURPLEAIR_API_KEY` and `NTFY_TOPIC` — secrets |
 | `www/crontoken.txt` | Duplicate of the token |
 | `www/sc_data_cache.json`, `www/sck_data_cache.json`, `www/pa_data_cache.json` | API response caches (regenerated) |
 | `www/cache/*` | ČHMÚ cache (regenerated) |
@@ -439,7 +442,7 @@ Source code + documentation + deployment config template. See [`.gitignore`](../
 git clone https://github.com/senzorvzduchu/map.git
 cd map
 cp www/config.example.php www/config.php
-# Edit www/config.php — fill in CRON_TOKEN and PURPLEAIR_API_KEY
+# Edit www/config.php — fill in CRON_TOKEN, PURPLEAIR_API_KEY and NTFY_TOPIC
 ```
 
 **Making changes:**
@@ -655,7 +658,7 @@ Ported from nosicheck.cz (same author), minus dark mode, fires, ČHMÚ alerts, f
 >
 > **Automatic faulty SC sensor detection (3 layers):** Layer 1 — `collect.php` rejects PM2.5 ≤ 0 or > 500 μg/m³ before DB insert. Layer 2 — frontend neighbor-ratio filter suppresses sensors reading > max(60, neighbor_median × 5) with ≥ 2 real neighbors in 0.1–30 km range (logged as `[SC Outlier]`). Layer 3 — `get_history.php` returns a `quality` object (plateau_high, stuck, mean_2h, std_dev_2h) computed from last 2h of readings; frontend shows amber warning banner in popup if flagged. CHMI sensors skip quality check (always trusted). `stuck` requires mean > 10 to avoid false positives in clean air.
 >
-> **Monitoring:** `monitor.php` runs via CRON every 15 min, checks DB freshness. If no new data for 20+ min, sends push notification via ntfy.sh (topic: `senzorvzduchu-monitor`). Cooldown: 1 alert per 2 hours.
+> **Monitoring:** `monitor.php` runs via CRON every 15 min, checks DB freshness. If no new data for 20+ min, sends push notification via ntfy.sh (topic from `NTFY_TOPIC` in `config.php`). Cooldown: 1 alert per 2 hours.
 >
 > **SC three-pass parsing:** The SC API returns one entry per sensor chip (dust chip + separate environmental chip per node, same `location.id`). `fetchSensorCommunityData()` does a first pass to collect `{temperature, humidity}` by `location.id`, a second pass to build the `scSensors[]` array enriched with temp/humidity, and a third pass to apply the neighbor-ratio outlier filter before calling `createOrUpdateMarker()`.
 >

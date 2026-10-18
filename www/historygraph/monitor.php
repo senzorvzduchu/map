@@ -17,7 +17,8 @@ if (!isset($_GET['token']) || $_GET['token'] !== CRON_TOKEN) {
 // Configuration
 $db_file = __DIR__ . '/air_quality_history.db';
 $cooldown_file = __DIR__ . '/monitor_last_alert.txt';
-$ntfy_topic = 'senzorvzduchu-monitor';  // Subscribe at https://ntfy.sh/senzorvzduchu-monitor
+// ntfy topic comes from config.php (constant NTFY_TOPIC) — never hardcode it here, this file is public.
+$ntfy_topic = defined('NTFY_TOPIC') ? trim((string)NTFY_TOPIC) : '';
 $stale_threshold = 1200;   // 20 minutes — 4 missed collection cycles
 $cooldown_seconds = 7200;  // 2 hours between alerts
 
@@ -70,7 +71,11 @@ if ($problem === null && file_exists($other_cache)) {
 }
 
 // 3. Send alert or report OK
-if ($problem !== null) {
+if ($problem !== null && $ntfy_topic === '') {
+    // Misconfigured: no topic → log and skip the push (no cooldown, so it retries next run).
+    error_log("monitor.php: NTFY_TOPIC is not defined in config.php — alert NOT sent: {$problem}");
+    echo "ALERT NOT SENT (NTFY_TOPIC missing in config.php): {$problem}";
+} elseif ($problem !== null) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, "https://ntfy.sh/{$ntfy_topic}");
     curl_setopt($ch, CURLOPT_POST, true);
