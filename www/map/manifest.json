@@ -19,9 +19,6 @@
     { "src": "/map/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "/map/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
-  "screenshots": [
-    { "src": "/map/icons/screenshot-phone-1.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Mapa kvality ovzduší" }
-  ],
   "shortcuts": [
     { "name": "PM2.5", "url": "/map/?utm_source=pwa&pollutant=pm25", "icons": [{ "src": "/map/icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "NO₂", "url": "/map/?utm_source=pwa&pollutant=no2", "icons": [{ "src": "/map/icons/icon-192.png", "sizes": "192x192" }] }

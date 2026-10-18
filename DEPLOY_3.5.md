@@ -1,6 +1,6 @@
 # Nasazení 3.5 (PWA + Android aplikace) na senzorvzduchu.cz (Active24, ruční FTP)
 
-Stav: **PŘIPRAVENO, nenasazeno.** 3.5 = kopie 3.4 (produkce od 17. 10. 2026) + vrstva PWA, díky které jde
+Stav: **NASAZENO 18. 10. 2026 ~19:40 (ruční FTP uživatelem), živě ověřeno ~19:50 - §6. 3.5.1 (19:55): `?pollutant=` v app.js + manifest bez screenshotu - čeká na nahrání.** 3.5 = kopie 3.4 (produkce od 17. 10. 2026) + vrstva PWA, díky které jde
 mapa publikovat na Google Play jako Trusted Web Activity (TWA): aplikace je tenká slupka, která otevře
 `https://senzorvzduchu.cz/map/` přes Chrome bez adresního řádku. Žádný backend, žádný VPS, nic nového na
 serveru kromě statických souborů. Android projekt (bubblewrap, keystore, texty do obchodu) je mimo tento
@@ -18,13 +18,14 @@ Balíček aplikace: `cz.senzorvzduchu.mapa`. Účet Play Console: organizace, ID
 | `map/soukromi.html` | nový | zásady ochrany soukromí (povinná URL v Play Console) | Play Console, uživatel |
 | `map/icons/*.png` | nový (6) | `icon-192/512`, `icon-maskable-192/512`, `apple-touch-icon`, `favicon-48` (pin z loga na `#21275F`) | manifest, index.html |
 | `.well-known/assetlinks.json` | nový | Digital Asset Links: důkaz, že doména patří k aplikaci. **Zatím se zástupnými otisky** - viz §3 | Chrome v Androidu při startu TWA |
-| `map/index.html` | změna | `<link rel=manifest>`, ikony, meta pro instalaci; registrace `sw.js` před `</body>`; `style.css?v=3.5` | návštěvník |
-| `map/embed.html` | změna | jen `style.css?v=3.5` (žádný manifest ani SW - embed zůstává čistý iframe jako u dark mode) | partnerské weby |
+| `map/app.js` | změna (3.5.1) | `?pollutant=pm25|…` v URL má přednost před `sv_pollutant` - zástupci z manifestu a odkazy z webu otevřou rovnou danou vrstvu | obě HTML |
+| `map/index.html` | změna | `<link rel=manifest>`, ikony, meta pro instalaci; registrace `sw.js` před `</body>`; `style.css?v=3.5`, `app.js?v=3.5` | návštěvník |
+| `map/embed.html` | změna | jen `style.css?v=3.5`, `app.js?v=3.5` (žádný manifest ani SW - embed zůstává čistý iframe jako u dark mode) | partnerské weby |
 | `map/style.css` | změna | `html.is-app body { padding-bottom: env(safe-area-inset-bottom) }` | obě slupky |
 
 **Nenahrávat**: `config.php`, `crontoken.txt`, `historygraph/*.db`, `backup-3.4/`, `tests/`, `*.md`, `cache/`.
 
-**Beze změny v 3.5**: všechny proxy, `lib/`, `historygraph/`, `app.js`, `interp.js`, `wind.js`, `info.js`, `alerts.js`.
+**Beze změny v 3.5**: všechny proxy, `lib/`, `historygraph/`, `interp.js`, `wind.js`, `info.js`, `alerts.js`.
 `config.php` a cron se nemění.
 
 ### .htaccess (kořen webu, přidat, pokud tam není)
@@ -77,6 +78,18 @@ Bez první části může Active24 blokovat složku začínající tečkou; bez 
 Ověření: `https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=https://senzorvzduchu.cz&relation=delegate_permission/common.handle_all_urls`
 → `statements` obsahuje `cz.senzorvzduchu.mapa` s oběma otisky. Dokud jsou v souboru zástupné hodnoty
 `REPLACE_WITH_…`, Chrome je ignoruje a nic se nerozbije - web i instalovatelná PWA fungují.
+
+## 6. Ověřeno živě (18. 10. 2026 ~19:45, prohlížeč v Claude desktop, po FTP uživatelem)
+
+- `/map/manifest.json` 200 `application/json`; `/map/sw.js` 200 `application/javascript`; `/.well-known/assetlinks.json` 200
+  `application/json` (zástupné otisky, viz §3); `/map/offline.html`, `/map/soukromi.html` 200; 6 ikon 200 `image/png`.
+- `/map/`: `<link rel="manifest" href="manifest.json?v=3.5">`, `style.css?v=3.5`, registrace `sw.js` přítomna,
+  `navigator.serviceWorker.getRegistrations()` → scope `https://senzorvzduchu.cz/map/`, stav `activated`, stránka pod
+  kontrolou SW. Konzola: jediná chyba = 404 `icons/screenshot-phone-1.png` (položka `screenshots` v manifestu → v 3.5.1 odstraněna).
+- `/map/embed.html`: `style.css?v=3.5`, bez manifestu.
+- `sw.js` se servíruje s `Cache-Control: max-age=31536000` (blok z §1 v `.htaccess` není aktivní nebo Active24 hlavičku přepisuje).
+  Neškodí: prohlížeče při kontrole aktualizace SW HTTP cache pro samotný skript obcházejí (`updateViaCache: 'imports'`).
+- Zjištěno: `app.js` nečetl `?pollutant=`, zástupci z manifestu by jen otevřeli mapu → 3.5.1.
 
 ## 4. Rollback
 

@@ -123,7 +123,10 @@ const NETWORK_LABELS = {
     airgradient: '<a href="https://www.airgradient.com/map/" target="_blank" rel="noopener">AirGradient</a> (CC BY-SA 4.0)',
 };
 
-let activePollutant = localStorage.getItem('sv_pollutant');
+// 3.5: `?pollutant=pm25|pm10|no2|o3|noise|temperature|humidity` (zástupci v manifest.json,
+// odkazy z webu) má přednost před uloženou volbou; neznámá hodnota se ignoruje.
+let activePollutant = new URLSearchParams(location.search).get('pollutant') || localStorage.getItem('sv_pollutant');
+if (!POLLUTANTS[activePollutant]) activePollutant = localStorage.getItem('sv_pollutant');
 if (!POLLUTANTS[activePollutant]) activePollutant = 'pm25';
 
 /** Hodnota mimo fyzikálně možný rozsah (`valid` v registru, např. -147 °C z vadného
