@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Offline – Senzorvzduchu</title>
+<meta name="theme-color" content="#21275F">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #21275F; color: #fff; padding: 24px;
+  }
+  .box { max-width: 420px; }
+  h1 { font-size: 1.4rem; margin: 0 0 12px; }
+  p { margin: 0 0 20px; line-height: 1.45; opacity: .9; }
+  button {
+    background: #fff; color: #21275F; border: 0; border-radius: 999px;
+    padding: 12px 24px; font-size: 1rem; font-weight: 600; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <div class="box">
+    <h1>Jste offline</h1>
+    <p>Mapa kvality ovzduší potřebuje připojení k internetu, aby načetla aktuální data ze senzorů. Zkuste to znovu, až budete online.</p>
+    <button onclick="location.reload()">Zkusit znovu</button>
+  </div>
+</body>
+</html>

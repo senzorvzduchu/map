@@ -34,8 +34,17 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=3.3.1">
+    <link rel="stylesheet" href="style.css?v=3.5">
     <meta name="theme-color" content="#21275F">
+    <!-- 3.5: PWA / Android app (TWA). Jen fullscreen mapa; embed.html tohle nemá. -->
+    <link rel="manifest" href="manifest.json?v=3.5">
+    <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Senzorvzduchu">
     <script>
         // 3.2: tmavý režim před prvním vykreslením (sv_theme, jinak systém) — logika v app.js.
         // Jen fullscreen mapa; embed.html tenhle blok nemá a zůstává světlý.
@@ -118,6 +127,31 @@
     <script src="wind.js?v=2.8"></script>
     <script src="info.js?v=3.4"></script>
     <script src="alerts.js?v=2.8"></script>
+    <script>
+        // 3.5: service worker (sw.js) — offline stránka, cache statiky a dlaždic; data vždy síť-first.
+        // Uvnitř Android aplikace (TWA) přidá <html class="is-app">, viz style.css.
+        (function () {
+            if (!('serviceWorker' in navigator)) return;
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('sw.js', { scope: '/map/' }).then(function (reg) {
+                    reg.addEventListener('updatefound', function () {
+                        var nw = reg.installing;
+                        if (!nw) return;
+                        nw.addEventListener('statechange', function () {
+                            if (nw.state === 'installed' && navigator.serviceWorker.controller) nw.postMessage('SKIP_WAITING');
+                        });
+                    });
+                }).catch(function (e) { console.warn('SW registration failed', e); });
+                var reloaded = false;
+                navigator.serviceWorker.addEventListener('controllerchange', function () {
+                    if (reloaded) return; reloaded = true; location.reload();
+                });
+            });
+            if (document.referrer.indexOf('android-app://') === 0 || matchMedia('(display-mode: standalone)').matches) {
+                document.documentElement.classList.add('is-app');
+            }
+        })();
+    </script>
 </body>
 
 </html>

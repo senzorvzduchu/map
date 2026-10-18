@@ -187,3 +187,21 @@ The map never asks for the position on load. `alerts.js` asks only when an
 air-quality warning is actually in force (to narrow it to the visitor's ORP);
 the answer is published as `window.ncUserPos`. Forecast area lookup uses the
 SENSOR's coordinates (orp-areas.js rings → kraj), not the visitor's.
+
+## 📱 PWA / Android app (3.5, index.html only)
+
+- `www/map/manifest.json`, `www/map/sw.js`, `www/map/offline.html`, `www/map/icons/`, `www/map/soukromi.html`
+  (privacy policy for Play) and `www/.well-known/assetlinks.json` make `/map/` an installable PWA and the
+  web half of the Android app (Trusted Web Activity, package `cz.senzorvzduchu.mapa`). The Android project
+  itself (bubblewrap, keystore, Play listing) lives OUTSIDE this repo in `CODE/Mobile App Map`; never copy
+  the keystore here.
+- `index.html` carries `<link rel="manifest">`, icon metas and the SW registration script before `</body>`;
+  `embed.html` has none of it (partners embedding the map must not get an install prompt) - keep it that way.
+- `sw.js` has no precache list on purpose: navigations and every `*.php` endpoint are network-first
+  (stale data only when the network fails), static assets and CDN libs stale-while-revalidate, tiles
+  cache-first capped at 400. Adding a data source needs no SW change. Bump `VERSION` in `sw.js` when you
+  want clients to drop their caches; the registration script auto-activates a new worker and reloads once.
+- `html.is-app` is set when running inside the TWA / installed PWA (`style.css` adds safe-area padding).
+- Geolocation policy (above) is unchanged; the Play "Data safety" form was filled accordingly.
+- `assetlinks.json` needs the SHA-256 of BOTH the upload key (`build.sh sha`) and Play's app-signing key
+  (Play Console → Setup → App signing). Placeholders are harmless until then.

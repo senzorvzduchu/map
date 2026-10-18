@@ -1,0 +1,30 @@
+{
+  "id": "/map/",
+  "name": "Mapa kvality ovzduší – Senzorvzduchu",
+  "short_name": "Senzorvzduchu",
+  "description": "Největší sjednocená mapa kvality ovzduší v ČR. Spojuje 6 sítí senzorů (Sensor.Community, ČHMÚ, PurpleAir, Smart Citizen, Libčich, AirGradient) – PM2.5, PM10, NO₂, O₃, hluk, teplota a vlhkost.",
+  "lang": "cs",
+  "dir": "ltr",
+  "start_url": "/map/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui", "browser"],
+  "orientation": "any",
+  "theme_color": "#21275F",
+  "background_color": "#21275F",
+  "categories": ["weather", "education", "utilities"],
+  "icons": [
+    { "src": "/map/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/map/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/map/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/map/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/map/icons/screenshot-phone-1.png", "sizes": "1080x1920", "type": "image/png", "form_factor": "narrow", "label": "Mapa kvality ovzduší" }
+  ],
+  "shortcuts": [
+    { "name": "PM2.5", "url": "/map/?utm_source=pwa&pollutant=pm25", "icons": [{ "src": "/map/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "NO₂", "url": "/map/?utm_source=pwa&pollutant=no2", "icons": [{ "src": "/map/icons/icon-192.png", "sizes": "192x192" }] }
+  ],
+  "prefer_related_applications": false
+}

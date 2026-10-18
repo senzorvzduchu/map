@@ -677,3 +677,6 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
         background: var(--surface-translucent);
     }
 }
+
+/* 3.5: uvnitř Android aplikace (TWA) / nainstalované PWA — odsazení od gesture baru a výřezu */
+html.is-app body { padding-bottom: env(safe-area-inset-bottom); }
