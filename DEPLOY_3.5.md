@@ -19,6 +19,7 @@ Balíček aplikace: `cz.senzorvzduchu.mapa`. Účet Play Console: organizace, ID
 | `map/icons/*.png` | nový (6) | `icon-192/512`, `icon-maskable-192/512`, `apple-touch-icon`, `favicon-48` (pin z loga na `#21275F`) | manifest, index.html |
 | `.well-known/assetlinks.json` | nový | Digital Asset Links: důkaz, že doména patří k aplikaci. **Zatím se zástupnými otisky** - viz §3 | Chrome v Androidu při startu TWA |
 | `map/app.js` | změna (3.5.1) | `?pollutant=pm25|…` v URL má přednost před `sv_pollutant` - zástupci z manifestu a odkazy z webu otevřou rovnou danou vrstvu | obě HTML |
+| `map/config.js` | nový (3.5.2) | klíč CARTO Basemaps (`window.SV_CONFIG.CARTO_KEY`) - mimo git, šablona `map/config.example.js`; nahrát PŘED `app.js` | index.html, embed.html |
 | `map/index.html` | změna | `<link rel=manifest>`, ikony, meta pro instalaci; registrace `sw.js` před `</body>`; `style.css?v=3.5`, `app.js?v=3.5` | návštěvník |
 | `map/embed.html` | změna | jen `style.css?v=3.5`, `app.js?v=3.5` (žádný manifest ani SW - embed zůstává čistý iframe jako u dark mode) | partnerské weby |
 | `map/style.css` | změna | `html.is-app body { padding-bottom: env(safe-area-inset-bottom) }` | obě slupky |

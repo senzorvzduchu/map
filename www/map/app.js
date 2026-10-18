@@ -422,7 +422,9 @@ if (window.matchMedia && document.getElementById('themeToggle')) {
 // --- Podkladové mapy ---
 // CARTO bez popisků + samostatné popisky v labelsPane, aby interpolační pole
 // leželo mezi mapou a jejími popisky. OSM má popisky v dlaždicích (fallback).
-const CARTO_KEY = 'cb1_25jm_1_2592aaeafb5ce82a0a9dd71b';
+// Klíč žije v config.js (mimo git, viz config.example.js).
+const CARTO_KEY = (window.SV_CONFIG && window.SV_CONFIG.CARTO_KEY) || '';
+if (!CARTO_KEY) console.warn('CARTO_KEY chybí – zkopíruj config.example.js → config.js');
 const BASEMAPS = {
     light: {
         base: `https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`,

@@ -103,9 +103,11 @@ documentation/
    define('PURPLEAIR_API_KEY', '...');   // get at https://develop.purpleair.com
    ```
 
-2. **Upload to shared hosting via FTP.**
+2. **Copy `www/map/config.example.js` → `www/map/config.js`** and paste the CARTO Basemaps key (free key at https://carto.com/basemaps/apikey/, restrict it to your domain in the dashboard). `config.js` is gitignored and must be uploaded with the rest of `www/map/`.
 
-3. **Configure cron jobs** (in hosting panel):
+3. **Upload to shared hosting via FTP.**
+
+4. **Configure cron jobs** (in hosting panel):
    ```
    */5  * * * * curl -s "https://senzorvzduchu.cz/historygraph/collect.php?token=TOKEN"
    */15 * * * * curl -s "https://senzorvzduchu.cz/historygraph/monitor.php?token=TOKEN"

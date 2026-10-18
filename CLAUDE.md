@@ -7,6 +7,7 @@ These files contain live credentials. Never open them, never echo their contents
 **Never read:**
 - `www/config.php` — contains `CRON_TOKEN` and `PURPLEAIR_API_KEY`
 - `www/crontoken.txt` — duplicate of `CRON_TOKEN`
+- `www/map/config.js` — `CARTO_KEY` (frontend; template `www/map/config.example.js`)
 - Any future `.env`, `*.secret`, `*.key`, `*credentials*` files
 
 **Safe alternatives:**
@@ -23,7 +24,7 @@ Describe the edit in natural language and have the user apply it manually. Do no
 
 ## 🚨 Before every `git commit`
 
-1. Run `git status` and confirm `www/config.php` and `www/crontoken.txt` are NOT listed
+1. Run `git status` and confirm `www/config.php`, `www/crontoken.txt` and `www/map/config.js` are NOT listed
 2. Run `git diff --cached --name-only | xargs grep -lE "(API_KEY|TOKEN|[a-f0-9]{40,})"` to scan staged content for hex strings that look like tokens
 3. Only then commit
 
