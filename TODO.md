@@ -194,10 +194,11 @@
 
 ## Převzato z 2.8 (stále otevřené)
 
-- [ ] **Zrcadlit na GitHub** (zatím NEPROVÁDĚT, jen zapsáno): složka není git repozitář
-      (`.gitignore` je, `.git` ne). Cíl: soukromé repo se stejným rozvržením jako nosicheck
-      (`hazarizk/…`). Před prvním commitem projít `.gitignore` (config.php, crontoken.txt, DB,
-      cache, backup-*/) a `git diff --cached | grep` na tokeny. Deploy zůstává ruční FTP.
+- [x] **Zrcadlit na GitHub** — hotovo 18. 10. 2026: tato složka je checkout
+      https://github.com/senzorvzduchu/map (veřejné, `main`, tagy `v2.5`–`v3.4` podle složek verzí).
+      Mimo repo: `config.php`, cache, DB, `backup*/`, `EMAIL_ADMIN_LIBCICH.md`. Deploy zůstává ruční FTP.
+- [ ] Téma ntfy `senzorvzduchu-monitor` je natvrdo v `www/historygraph/monitor.php` (a ve veřejném repu):
+      přesunout do `config.php` a téma přejmenovat.
 - [ ] Do `config.php` na serveru přidat `ADMIN_TOKEN` (jinak admin blokací používá CRON_TOKEN).
 - [ ] Očima zkontrolovat podklad „Barevná" v normálním okně.
 - [ ] Sledovat spotřebu CARTO dlaždic (2 vrstvy místo 1; free tier 5 M/měsíc).
