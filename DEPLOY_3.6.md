@@ -1,7 +1,7 @@
 # Nasazení 3.6 (Moje senzory, push upozornění, Větrat?) na senzorvzduchu.cz (Active24, ruční FTP)
 
-Stav: **hotovo lokálně 19. 10. 2026 (sandbox 8135, offline testy `tests/test_webpush.php` + `tests/test_push.php` ALL OK),
-čeká na nahrání.** Předpoklad: 3.5.3 nahráno (nebo nahrát spolu s tímhle - 3.6 obsahuje i změny 3.5.3).
+Stav: **NASAZENO 19. 10. 2026 ~17:10 (ruční FTP uživatelem), živě ověřeno: get_history JSON, `*.db` 403, `?action=vapid` vydal klíč
+(`push-vapid.php` vznikl na serveru), tick `checked:0`, mine.js/badge/lib 200, index `?v=3.6`. Zbývá test push na telefonu (§3 bod 6).** Předpoklad: 3.5.3 nahráno (nebo nahrát spolu s tímhle - 3.6 obsahuje i změny 3.5.3).
 Web i aplikace (Android TWA, iPhone PWA z plochy) dostanou vše najednou; aplikace z Play se kvůli webu nepřestavuje,
 jen kvůli notifikacím (§4).
 
