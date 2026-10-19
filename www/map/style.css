@@ -773,9 +773,6 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
 
 /* 3.5: uvnitř Android aplikace (TWA) / nainstalované PWA — odsazení od gesture baru a výřezu */
 html.is-app body { padding-bottom: env(safe-area-inset-bottom); }
-/* 3.5.3: Android 15+ (targetSdk 36 = edge-to-edge) ignoruje barvu navigační lišty z TWA a kreslí
-   pod tlačítky ◁ ○ □ pruh podle pozadí okna/stránky. Pozadí těla stránky proto drží barvu stavové
-   lišty (světlý: brand, tmavý: meta theme-color), aby spodní pruh ladil s horním. Mapa (#map) ho
-   celý překrývá, v samotné mapě se tahle barva neukáže. */
-html.is-app body { background-color: var(--brand-primary); }
-html.is-app[data-theme="dark"] body { background-color: #1f2937; }
+/* 3.6.1: pozadí těla v aplikaci zůstává --bg-light (bílá / tmavá). Pokus 3.5.3 obarvit ho brandovou modří
+   kvůli pruhu pod tlačítky Androidu 15 nic nezměnil (pruh kreslí Chrome), a na iPhonu se modř ukázala
+   pod mapou v oblasti home indikátoru, kde se kreslí jen plátno stránky. */

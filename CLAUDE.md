@@ -208,7 +208,8 @@ SENSOR's coordinates (orp-areas.js rings → kraj), not the visitor's.
   (Play Console → Setup → App signing). Placeholders are harmless until then.
 - 3.5.3: `is-app` is set by the `<head>` script (from `?utm_source=twa|pwa`, `android-app://` referrer or
   `display-mode: standalone`) BEFORE app.js/interp.js run; in app mode interpolation defaults OFF (own key
-  `sv_interp_app`), the +/− control is hidden, data refetch on return to foreground, body background = status-bar colour.
+  `sv_interp_app`), the +/− control is hidden, data refetch on return to foreground. (The 3.5.3 navy body background was reverted in 3.6.1: Chrome paints
+  the Android 15 bottom strip itself, and on iOS the canvas colour shows under the home indicator.)
 
 ## ⭐ My sensors, push alerts, ventilation advice (3.6, index.html only)
 

@@ -125,8 +125,8 @@ Po prvním spuštění z Play (interní test, 19. 10. 2026, foto v 15:42) a z PW
 
 Spodní pruh na Androidu: `targetSdkVersion 36` → Android 15+ vynucuje edge-to-edge a barvu navigační lišty z `twa-manifest.json`
 (`navigationColor`) ignoruje; pod tlačítky ◁ ○ □ kreslí poloprůhledný pruh nad pozadím okna. Pozadí `body` je teď tmavě modré -
-**ověřit na telefonu**, zda pruh zmodrá; pokud ne, z webu to ovlivnit nejde (pak jen přestavba aplikace s novějším
-androidbrowserhelper / vlastní `enableEdgeToEdge`).
+ověřeno 19. 10. 2026 večer: pruh zůstal bílý (kreslí ho Chrome, z webu to ovlivnit nejde) a na iPhonu se modř ukázala
+pod mapou v oblasti home indikátoru → **3.6.1 pozadí vráceno na --bg-light** (`style.css?v=3.6.1`).
 
 Výchozí stav v aplikaci: PM2.5 (poslední volba látky se dál pamatuje v `sv_pollutant`), bez interpolace, tmavý/světlý režim
 podle systému (přepínač 🌙 v liště dál ukládá ruční volbu do `sv_theme`; smazat = vrátit se k systému).
