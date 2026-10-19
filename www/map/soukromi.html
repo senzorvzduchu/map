@@ -35,8 +35,17 @@
 <h2>Služby třetích stran</h2>
 <p>Mapové podklady načítáme od poskytovatelů dlaždic (např. OpenStreetMap, CARTO). Při jejich načítání se těmto poskytovatelům předává vaše IP adresa, stejně jako při návštěvě jakéhokoli webu. Aplikace nepoužívá reklamní ani analytické SDK.</p>
 
+<h2 id="smazani">Smazání dat (aplikace Senzorvzduchu, vývojář Senzorvzduchu, z.s.)</h2>
+<p>Jediná data, která o vás náš server může mít, jsou odběry push upozornění (adresa pro doručování vydaná vaším prohlížečem, její šifrovací klíče a vaše pravidlo: senzor, látka, práh, počet hodin, případně kód oblasti pro smogové výstrahy). Smažete je takto:</p>
+<ol>
+  <li>V mapě otevřete kartu „Moje senzory" a u senzoru klepněte na zvonek → „Zrušit". Tím se pravidlo na serveru smaže; po zrušení posledního pravidla se zruší i celý odběr.</li>
+  <li>Nebo odeberte aplikaci oprávnění k oznámením (Android: Nastavení → Aplikace → Senzorvzduchu → Oznámení; iPhone: Nastavení → Oznámení) či aplikaci odinstalujte. Push služba pak naši adresu zneplatní a server záznam smaže automaticky při dalším pokusu o doručení.</li>
+  <li>Nebo napište na info@senzorvzduchu.cz; smažeme všechny záznamy patřící k vámi uvedenému senzoru.</li>
+</ol>
+<p>Smazáno je vše uvedené výše, nic se neuchovává. Nastavení v zařízení (sledované senzory, vybraná látka, podklad) je jen ve vašem prohlížeči a odstraníte ho smazáním dat webu nebo odinstalací aplikace. Provozní logy serveru (IP adresa, čas požadavku) se mažou automaticky a nejsou s odběry propojené.</p>
+
 <h2>Vaše práva</h2>
-<p>Protože nezpracováváme žádné osobní údaje spojené s vaší osobou, nemáme co mazat ani exportovat. S dotazy k ochraně soukromí se obracejte na info@senzorvzduchu.cz. Máte rovněž právo podat stížnost u Úřadu pro ochranu osobních údajů (www.uoou.cz).</p>
+<p>Kromě odběrů push upozornění (viz výše) nezpracováváme žádné osobní údaje spojené s vaší osobou. S dotazy k ochraně soukromí se obracejte na info@senzorvzduchu.cz. Máte rovněž právo podat stížnost u Úřadu pro ochranu osobních údajů (www.uoou.cz).</p>
 
 <h2>Změny těchto zásad</h2>
 <p>Aktuální znění je vždy na této adrese. Při podstatné změně aktualizujeme datum platnosti v záhlaví.</p>
