@@ -1,0 +1,12 @@
+# historygraph/ (3.6): databáze a zámky nikdy nesmí být ke stažení.
+# push.db = adresy odběrů push upozornění; air_quality_history.db byla do 3.6 veřejně čitelná.
+# Jen tahle složka - kořenový .htaccess patří WordPressu (Kadence Security, Hummingbird) a nesahá se na něj.
+<FilesMatch "\.(db|db-wal|db-shm|db-journal|sqlite|lock)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>

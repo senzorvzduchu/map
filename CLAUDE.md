@@ -222,7 +222,7 @@ SENSOR's coordinates (orp-areas.js rings → kraj), not the visitor's.
   `historygraph/push.db`, rule evaluation, messages) → `lib/WebPush.php` (RFC 8291 aes128gcm + RFC 8292 VAPID,
   pure PHP, no composer). VAPID keys: `config.php` `VAPID_*` if defined, else auto-generated `www/push-vapid.php`
   (gitignored; NEVER regenerate on the live server — every browser subscription is bound to the public key).
-  Endpoints are restricted to `Push::ENDPOINT_HOSTS`. `www/.htaccess` denies `*.db` / `*.lock` downloads.
+  Endpoints are restricted to `Push::ENDPOINT_HOSTS`. `www/historygraph/.htaccess` denies `*.db` / `*.lock` downloads there; the ROOT `.htaccess` on the server belongs to WordPress (Kadence Security, Hummingbird) and is never shipped from this repo.
 - Evaluation: hourly AVG slots (incl. the running hour) from the history DB; `hours` consecutive slots ≥ threshold →
   one message per episode (`active`), "klesl" message when the latest slot drops below, ≥ 6 h between exceed messages;
   smog = `cat: smog` alerts from `cache/alerts_latest.json` whose `orp` list contains the rule's ORP, once per alert id.

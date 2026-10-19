@@ -25,7 +25,7 @@ jen kvůli notifikacím (§4).
 
 | Soubor na serveru | Nový/změněný | Poznámka |
 |---|---|---|
-| `.htaccess` (kořen) | nový/sloučit | PWA blok z 3.5 + **zákaz stahování `*.db`, `*.lock`** - `push.db` nese adresy odběrů. Po nahrání hned ověřit §3 |
+| `historygraph/.htaccess` | nový | **zákaz stahování `*.db`, `*.lock`** jen v této složce - `push.db` nese adresy odběrů. Kořenový `.htaccess` je WordPressu (Kadence, Hummingbird) a NEMĚNÍ se. Po nahrání ověřit §3 |
 | `push-api.php` | nový | API odběrů + tick |
 | `lib/Push.php`, `lib/WebPush.php` | nové | logika, DB, šifrování, VAPID |
 | `config.example.php` | změna | komentář k volitelným `VAPID_*` (do `config.php` NIC přidávat nemusíte) |
@@ -46,7 +46,7 @@ nepřepisovat - odběry v prohlížečích jsou vázané na veřejný klíč), `
 
 1. `curl -I https://senzorvzduchu.cz/historygraph/push.db` → **403** (před prvním odběrem 404 - pak zkusit
    `curl -I https://senzorvzduchu.cz/historygraph/air_quality_history.db` → 403; do 3.6 vracel 200).
-   Když `.htaccess` shodí web (500), smazat ho a napsat - blok je psaný pro Apache 2.2 i 2.4.
+   Kdyby `/historygraph/get_history.php` přestal fungovat (500), smazat `historygraph/.htaccess` a napsat - blok je psaný pro Apache 2.2 i 2.4.
 2. `https://senzorvzduchu.cz/push-api.php?action=vapid` → `{"publicKey":"B…"}` (88 znaků). Tím vznikl `push-vapid.php`.
 3. `https://senzorvzduchu.cz/push-vapid.php` → prázdná stránka (soubor se vykoná, nic nevypíše).
 4. `https://senzorvzduchu.cz/push-api.php?action=tick` → `{"checked":0,…}` nebo `{"skipped":true,…}`.
