@@ -5,8 +5,8 @@
       "namespace": "android_app",
       "package_name": "cz.senzorvzduchu.mapa",
       "sha256_cert_fingerprints": [
-        "REPLACE_WITH_UPLOAD_KEY_SHA256_FROM_BUBBLEWRAP",
-        "REPLACE_WITH_PLAY_APP_SIGNING_SHA256_FROM_PLAY_CONSOLE"
+        "19:79:FD:15:9F:F1:4D:59:FE:59:33:B9:A9:16:C5:94:BA:70:A6:B2:8E:75:97:17:72:B7:14:BC:47:75:51:A1",
+        "05:CC:44:B3:2E:46:4C:8B:00:C9:11:6F:F9:93:02:DD:EE:FE:BE:74:F8:DD:09:FC:69:BD:FC:67:DD:43:ED:18"
       ]
     }
   }
