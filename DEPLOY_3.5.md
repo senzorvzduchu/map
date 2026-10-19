@@ -1,6 +1,6 @@
 # Nasazení 3.5 (PWA + Android aplikace) na senzorvzduchu.cz (Active24, ruční FTP)
 
-Stav: **NASAZENO 18. 10. 2026 ~19:40 (ruční FTP uživatelem), živě ověřeno ~19:50 - §6. 3.5.1 (19:55): `?pollutant=` v app.js + manifest bez screenshotu - čeká na nahrání.** 3.5 = kopie 3.4 (produkce od 17. 10. 2026) + vrstva PWA, díky které jde
+Stav: **NASAZENO 18. 10. 2026 ~19:40 (ruční FTP uživatelem), živě ověřeno ~19:50 - §6. 3.5.1 (19:55): `?pollutant=` v app.js + manifest bez screenshotu - čeká na nahrání. 3.5.3 (19. 10. 2026): chování v aplikaci - §7, čeká na nahrání.** 3.5 = kopie 3.4 (produkce od 17. 10. 2026) + vrstva PWA, díky které jde
 mapa publikovat na Google Play jako Trusted Web Activity (TWA): aplikace je tenká slupka, která otevře
 `https://senzorvzduchu.cz/map/` přes Chrome bez adresního řádku. Žádný backend, žádný VPS, nic nového na
 serveru kromě statických souborů. Android projekt (bubblewrap, keystore, texty do obchodu) je mimo tento
@@ -110,3 +110,28 @@ chová se neutrálně (síť-first); úplné odhlášení = nahrát `sw.js` s ob
 - Geolokace: beze změny (nikdy při načtení; `alerts.js` jen při výstraze). V Data safety v Play Console
   tedy „Location - collected, not shared, optional, app functionality“ pouze pokud zůstane dotaz v alerts.js.
 - `embed.html` úmyslně bez manifestu a SW: partner, který mapu vkládá, nemá dostat výzvu k instalaci cizí aplikace.
+
+## 7. 3.5.3 (19. 10. 2026) - chování uvnitř aplikace / PWA
+
+Po prvním spuštění z Play (interní test, 19. 10. 2026, foto v 15:42) a z PWA v iOS Safari:
+
+| Soubor | Změna |
+|---|---|
+| `map/index.html` | třída `is-app` se nastavuje už ve skriptu v `<head>` (z `?utm_source=twa\|pwa`, referreru `android-app://` nebo `display-mode: standalone`), ne až za `</body>` - app.js a interp.js ji potřebují při načtení; cache-bustery `style.css`, `app.js`, `interp.js` → `?v=3.5.3` |
+| `map/embed.html` | jen cache-bustery `?v=3.5.3` |
+| `map/interp.js` | v aplikaci interpolace ve výchozím stavu VYPNUTÁ, vlastní klíč `sv_interp_app` (jako embed); web v prohlížeči beze změny |
+| `map/app.js` | po návratu aplikace do popředí (`visibilitychange`, `pageshow`) se data načtou hned, jsou-li starší než 5 min - Android na pozadí intervaly zastaví a ukazatel vlevo dole držel 15:27 v 15:42 |
+| `map/style.css` | mobil: +/− pod lištou i s výřezem (`margin-top: calc(52px + env(safe-area-inset-top))` - na iPhonu se +/− kreslilo pod lištu); v aplikaci (`html.is-app`) se +/− nezobrazuje vůbec (pinch); pozadí `body` v aplikaci = barva stavové lišty (světlý `#21275F`, tmavý `#1f2937`) kvůli spodnímu pruhu Androidu 15+ |
+
+Spodní pruh na Androidu: `targetSdkVersion 36` → Android 15+ vynucuje edge-to-edge a barvu navigační lišty z `twa-manifest.json`
+(`navigationColor`) ignoruje; pod tlačítky ◁ ○ □ kreslí poloprůhledný pruh nad pozadím okna. Pozadí `body` je teď tmavě modré -
+**ověřit na telefonu**, zda pruh zmodrá; pokud ne, z webu to ovlivnit nejde (pak jen přestavba aplikace s novějším
+androidbrowserhelper / vlastní `enableEdgeToEdge`).
+
+Výchozí stav v aplikaci: PM2.5 (poslední volba látky se dál pamatuje v `sv_pollutant`), bez interpolace, tmavý/světlý režim
+podle systému (přepínač 🌙 v liště dál ukládá ruční volbu do `sv_theme`; smazat = vrátit se k systému).
+
+Nahrát FTP: `map/index.html`, `map/embed.html`, `map/app.js`, `map/interp.js`, `map/style.css`. Ověřeno lokálně 19. 10. 2026
+(sandbox 8135, `?utm_source=twa`: `is-app` ano, interpolace vypnutá, +/− skryté, pozadí `#21275F` / `#1f2937`; `/map/` bez
+parametru beze změny: interpolace zapnutá, +/− viditelné).
+

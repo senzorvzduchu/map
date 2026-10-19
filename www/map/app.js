@@ -20,6 +20,7 @@ let map;
 const markers = new Map();       // sensorId -> L.circleMarker
 const sensorStore = new Map();   // sensorId -> {id, network, lat, lng, name, values}
 let isLoading = false;
+let lastFetchAt = 0; // 3.5.3: čas posledního dokončeného fetchAllData (obnova po návratu do popředí)
 let activeChart = null;
 let libcichBounds = null;
 let chartRange = localStorage.getItem('sv_chart_range') === '5d' ? '5d' : '24h';
@@ -378,6 +379,17 @@ window.addEventListener('load', function () {
     document.addEventListener('visibilitychange', reloadIfStale);
     window.addEventListener('pageshow', (e) => { if (e.persisted) reloadIfStale(); });
     setInterval(reloadIfStale, 300000);
+
+    // 3.5.3: aplikace na pozadí (Android TWA, PWA) nedostává intervaly — po návratu
+    // do popředí by ukazatel vlevo dole držel čas starý desítky minut (19. 10. 2026:
+    // 15:27 v 15:42). Jsou-li data starší než interval obnovy, načíst hned.
+    const refreshIfStale = () => {
+        if (document.visibilityState !== 'visible') return;
+        if (Date.now() - lastFetchAt < 300000) return;
+        fetchAllData();
+    };
+    document.addEventListener('visibilitychange', refreshIfStale);
+    window.addEventListener('pageshow', (e) => { if (e.persisted) refreshIfStale(); });
 });
 
 // Legenda se nesmí překrývat s lištou látek: na širokých obrazovkách zůstává
@@ -593,6 +605,7 @@ async function fetchAllData() {
         dotEl.classList.toggle('error', failures > 0);
     }
     isLoading = false;
+    lastFetchAt = Date.now();
     if (window.refreshInterp) window.refreshInterp();
 }
 

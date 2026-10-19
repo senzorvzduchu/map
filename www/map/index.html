@@ -34,7 +34,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=3.5">
+    <link rel="stylesheet" href="style.css?v=3.5.3">
     <meta name="theme-color" content="#21275F">
     <!-- 3.5: PWA / Android app (TWA). Jen fullscreen mapa; embed.html tohle nemá. -->
     <link rel="manifest" href="manifest.json?v=3.5">
@@ -50,6 +50,14 @@
         // Jen fullscreen mapa; embed.html tenhle blok nemá a zůstává světlý.
         document.documentElement.dataset.theme = localStorage.getItem('sv_theme')
             || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        // 3.5.3: uvnitř Android aplikace (TWA, start_url ?utm_source=twa) nebo nainstalované PWA
+        // (?utm_source=pwa, display-mode standalone) → <html class="is-app"> ještě před app.js
+        // a interp.js: ty podle toho volí výchozí stav (interpolace vypnutá, vlastní klíč).
+        if (/[?&]utm_source=(twa|pwa)(&|$)/.test(location.search)
+            || document.referrer.indexOf('android-app://') === 0
+            || matchMedia('(display-mode: standalone)').matches) {
+            document.documentElement.classList.add('is-app');
+        }
     </script>
 </head>
 
@@ -123,14 +131,14 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
 
     <script src="config.js"></script>
-    <script src="app.js?v=3.5"></script>
-    <script src="interp.js?v=3.0"></script>
+    <script src="app.js?v=3.5.3"></script>
+    <script src="interp.js?v=3.5.3"></script>
     <script src="wind.js?v=2.8"></script>
     <script src="info.js?v=3.4"></script>
     <script src="alerts.js?v=2.8"></script>
     <script>
         // 3.5: service worker (sw.js) — offline stránka, cache statiky a dlaždic; data vždy síť-first.
-        // Uvnitř Android aplikace (TWA) přidá <html class="is-app">, viz style.css.
+        // (Třídu is-app pro aplikaci/PWA nastavuje skript v <head>, 3.5.3.)
         (function () {
             if (!('serviceWorker' in navigator)) return;
             window.addEventListener('load', function () {
@@ -148,9 +156,6 @@
                     if (reloaded) return; reloaded = true; location.reload();
                 });
             });
-            if (document.referrer.indexOf('android-app://') === 0 || matchMedia('(display-mode: standalone)').matches) {
-                document.documentElement.classList.add('is-app');
-            }
         })();
     </script>
 </body>

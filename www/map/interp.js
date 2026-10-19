@@ -37,9 +37,13 @@
 
     // Embed (iframe na cizím webu) má interpolaci ve výchozím stavu VYPNUTOU a vlastní
     // klíč v localStorage, aby se volba v iframe a na plné mapě neovlivňovaly.
+    // 3.5.3: totéž pro Android aplikaci / nainstalovanou PWA (<html class="is-app">,
+    // nastavuje <head> v index.html): na telefonu je pole mezi řídkými senzory spíš matoucí,
+    // uživatel si ho zapne v legendě; klíč `sv_interp_app` nesdílí stav s webem v prohlížeči.
     const IS_EMBED = /embed\.html$/i.test(location.pathname);
-    const STORE_KEY = IS_EMBED ? 'sv_interp_embed' : 'sv_interp';
-    let enabled = IS_EMBED
+    const IS_APP = document.documentElement.classList.contains('is-app');
+    const STORE_KEY = IS_EMBED ? 'sv_interp_embed' : (IS_APP ? 'sv_interp_app' : 'sv_interp');
+    let enabled = (IS_EMBED || IS_APP)
         ? localStorage.getItem(STORE_KEY) === '1'
         : localStorage.getItem(STORE_KEY) !== '0';
     let overlay = null;

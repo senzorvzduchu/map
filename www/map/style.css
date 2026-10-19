@@ -648,7 +648,10 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
     .chart-container { height: 150px; }
     .chart-range-btn { font-size: 10px; padding: 3px 7px; }
     .popup-quality { font-size: 10px; }
-    .leaflet-top.leaflet-left .leaflet-control { margin-top: 52px; }
+    /* Pod lištou látek i na iPhonu s výřezem (lišta sedí na 10px + safe-area-inset-top). */
+    .leaflet-top.leaflet-left .leaflet-control { margin-top: calc(52px + env(safe-area-inset-top)); }
+    /* 3.5.3: v aplikaci / PWA na telefonu je +/− zbytečné (pinch), jen zabírá roh mapy. */
+    html.is-app .leaflet-control-zoom { display: none; }
     /* top nastavuje layoutLegend() v app.js; 62px je fallback bez JS */
     .legend { top: 62px; right: 10px; left: auto; min-width: 120px; padding: 8px 10px; max-width: 60vw; }
     .legend-content:not(.collapsed) { max-height: calc(100dvh - 140px); overflow-y: auto; }
@@ -680,3 +683,9 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
 
 /* 3.5: uvnitř Android aplikace (TWA) / nainstalované PWA — odsazení od gesture baru a výřezu */
 html.is-app body { padding-bottom: env(safe-area-inset-bottom); }
+/* 3.5.3: Android 15+ (targetSdk 36 = edge-to-edge) ignoruje barvu navigační lišty z TWA a kreslí
+   pod tlačítky ◁ ○ □ pruh podle pozadí okna/stránky. Pozadí těla stránky proto drží barvu stavové
+   lišty (světlý: brand, tmavý: meta theme-color), aby spodní pruh ladil s horním. Mapa (#map) ho
+   celý překrývá, v samotné mapě se tahle barva neukáže. */
+html.is-app body { background-color: var(--brand-primary); }
+html.is-app[data-theme="dark"] body { background-color: #1f2937; }
