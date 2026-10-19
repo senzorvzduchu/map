@@ -34,7 +34,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <link rel="stylesheet" href="style.css?v=3.5.3">
+    <link rel="stylesheet" href="style.css?v=3.6">
     <meta name="theme-color" content="#21275F">
     <!-- 3.5: PWA / Android app (TWA). Jen fullscreen mapa; embed.html tohle nemá. -->
     <link rel="manifest" href="manifest.json?v=3.5">
@@ -115,6 +115,15 @@
         </div>
     </div>
 
+    <!-- 3.6: Moje senzory (mine.js) — sledované senzory, rada „Větrat?", push upozornění; skrytá bez senzorů -->
+    <div class="mine" id="mine" hidden>
+        <div class="mine-header"><span>Moje senzory</span><span class="mine-caret">▾</span></div>
+        <div class="mine-body">
+            <div id="mineVent" hidden></div>
+            <div id="mineRows"></div>
+        </div>
+    </div>
+
     <!-- Výstraha ČHMÚ na kvalitu ovzduší (alerts.js; skrytá, dokud žádná neplatí) -->
     <div class="nc-alert" id="ncAlert" hidden></div>
 
@@ -131,11 +140,12 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-velocity@2.1.4/dist/leaflet-velocity.min.js"></script>
 
     <script src="config.js"></script>
-    <script src="app.js?v=3.5.3"></script>
+    <script src="app.js?v=3.6"></script>
     <script src="interp.js?v=3.5.3"></script>
     <script src="wind.js?v=2.8"></script>
     <script src="info.js?v=3.4"></script>
     <script src="alerts.js?v=2.8"></script>
+    <script src="mine.js?v=3.6"></script>
     <script>
         // 3.5: service worker (sw.js) — offline stránka, cache statiky a dlaždic; data vždy síť-first.
         // (Třídu is-app pro aplikaci/PWA nastavuje skript v <head>, 3.5.3.)

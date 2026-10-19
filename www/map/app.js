@@ -607,6 +607,7 @@ async function fetchAllData() {
     isLoading = false;
     lastFetchAt = Date.now();
     if (window.refreshInterp) window.refreshInterp();
+    document.dispatchEvent(new CustomEvent('sv:data')); // 3.6: karta Moje senzory, push tick
 }
 
 /**
@@ -1035,7 +1036,8 @@ function renderSensor(rec) {
     const color = val === null ? 'transparent' : (isStale ? NO_DATA_COLOR : colorFor(activePollutant, val));
     const radius = val === null ? 8 : cfg.radius(val);
 
-    let popupHtml = `<div class="popup-header">${escapeHtml(rec.name)}</div>`;
+    // 3.6: ★ sledovat senzor (mine.js, jen index.html)
+    let popupHtml = `<div class="popup-header">${escapeHtml(rec.name)}${window.svMine ? window.svMine.starHtml(rec.id) : ''}</div>`;
     popupHtml += `<div class="popup-content-body">`;
 
     popupHtml += `<div class="popup-hero">`;
@@ -1160,6 +1162,7 @@ function wirePopupChart(sensorId) {
     const m = markers.get(sensorId);
     const p = m && m.getPopup ? m.getPopup() : null;
     if (p) Object.assign(p.options, popupOptions());
+    if (window.svMine) window.svMine.wireStar(); // 3.6
     loadHistory(sensorId, chartRange);
     // Štítek jiné látky → přepnout mapu i popup na ni (setPollutant popup
     // překreslí a graf nahraje znovu, protože je otevřený).

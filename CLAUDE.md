@@ -206,3 +206,30 @@ SENSOR's coordinates (orp-areas.js rings → kraj), not the visitor's.
 - Geolocation policy (above) is unchanged; the Play "Data safety" form was filled accordingly.
 - `assetlinks.json` needs the SHA-256 of BOTH the upload key (`build.sh sha`) and Play's app-signing key
   (Play Console → Setup → App signing). Placeholders are harmless until then.
+- 3.5.3: `is-app` is set by the `<head>` script (from `?utm_source=twa|pwa`, `android-app://` referrer or
+  `display-mode: standalone`) BEFORE app.js/interp.js run; in app mode interpolation defaults OFF (own key
+  `sv_interp_app`), the +/− control is hidden, data refetch on return to foreground, body background = status-bar colour.
+
+## ⭐ My sensors, push alerts, ventilation advice (3.6, index.html only)
+
+- `www/map/mine.js` owns all three; app.js only inserts `svMine.starHtml()` into the popup header, calls
+  `svMine.wireStar()` after a popup opens, and dispatches `sv:data` at the end of `fetchAllData()`. It reads
+  app.js globals (`map`, `sensorStore`, `markers`, `POLLUTANTS`, `activePollutant`, `setPollutant`, `loadForecast`,
+  `popupOptions`, `ncOrpAt`). embed.html has no `#mine` container and no mine.js — keep it that way.
+- Pinned sensors: localStorage `sv_my_sensors` (max 5, `{id,name,network,lat,lng}`), `sv_mine_collapsed`.
+  First pinned sensor drives the "Větrat?" card. `?sensor=<id>` deep link opens that popup after the first data load.
+- Push server: `push-api.php` (vapid/subscribe/unsubscribe/rules/test/tick) → `lib/Push.php` (SQLite
+  `historygraph/push.db`, rule evaluation, messages) → `lib/WebPush.php` (RFC 8291 aes128gcm + RFC 8292 VAPID,
+  pure PHP, no composer). VAPID keys: `config.php` `VAPID_*` if defined, else auto-generated `www/push-vapid.php`
+  (gitignored; NEVER regenerate on the live server — every browser subscription is bound to the public key).
+  Endpoints are restricted to `Push::ENDPOINT_HOSTS`. `www/.htaccess` denies `*.db` / `*.lock` downloads.
+- Evaluation: hourly AVG slots (incl. the running hour) from the history DB; `hours` consecutive slots ≥ threshold →
+  one message per episode (`active`), "klesl" message when the latest slot drops below, ≥ 6 h between exceed messages;
+  smog = `cat: smog` alerts from `cache/alerts_latest.json` whose `orp` list contains the rule's ORP, once per alert id.
+  Triggered by the map (`?action=tick` after each data load, server-side throttle 5 min + flock) — no cron required.
+- sw.js: `push` → showNotification (icon-192, badge-96, tag, data.url), `notificationclick` → focus/open the deep link,
+  `pushsubscriptionchange` → re-subscribe with the same options.
+- Offline tests: `tests/test_webpush.php` (RFC 8291 §5 vector byte-exact + VAPID verify), `tests/test_push.php`
+  (temp DBs, injected sender). The built-in browser denies Notification permission, so the live chain is phone-only.
+- TWA: `enableNotifications: true` in `Mobile App Map/twa/twa-manifest.json` (notification delegation) needs
+  `build.sh update` + `build` + new AAB; the web works without it.

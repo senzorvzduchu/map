@@ -128,6 +128,47 @@ self.addEventListener('fetch', (event) => {
   // everything else: straight to network
 });
 
+// 3.6: push upozornění (push-api.php → lib/WebPush.php). Payload JSON {title, body, tag, url}.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data ? event.data.text() : '' }; }
+  const title = data.title || 'Senzorvzduchu';
+  const opts = {
+    body: data.body || '',
+    icon: '/map/icons/icon-192.png',
+    badge: '/map/icons/badge-96.png',
+    tag: data.tag || 'sv',
+    renotify: true,
+    lang: 'cs',
+    data: { url: data.url || '/map/?utm_source=push' },
+  };
+  event.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = new URL((event.notification.data && event.notification.data.url) || '/map/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.indexOf(self.location.origin + '/map/') === 0 && 'focus' in c) {
+          if ('navigate' in c) c.navigate(url).catch(() => {});
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
+// Push služba obměnila odběr: nový odběr se server dozví až z mapy (mine.js při dalším otevření);
+// tady jen obnovíme odběr se stejným klíčem, aby nezanikl.
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const old = event.oldSubscription;
+  if (!old || !old.options) return;
+  event.waitUntil(self.registration.pushManager.subscribe(old.options).catch(() => {}));
+});
+
 // Lets the page trigger an immediate update after you deploy a new sw.js
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
