@@ -748,6 +748,14 @@ html[data-theme="dark"] .leaflet-container a.leaflet-popup-close-button:hover { 
         bottom: calc(40px + env(safe-area-inset-bottom));
         max-height: 46vh; overflow-y: auto; overscroll-behavior: contain;
     }
+    /* 3.6.2: sbalená karta = pilulka vlevo dole, ne pruh přes celou šířku (sbaluje se jen klepnutím na hlavičku) */
+    .mine.collapsed { right: auto; width: auto; max-width: 60vw; border-radius: 14px; }
+    .mine.collapsed .mine-header { padding: 5px 10px 5px 9px; font-size: 11px; gap: 6px; }
+    .mine.collapsed .mine-header > span:first-child::before { content: '★ '; color: #F4B400; }
+    /* čtení větru nad pilulkou, ne pod ní */
+    body:has(.mine:not([hidden])) .leaflet-bottom.leaflet-left .leaflet-control-velocity {
+        margin-bottom: calc(72px + env(safe-area-inset-bottom));
+    }
     .popup-star { right: 36px; top: 4px; }
     .update-indicator {
         bottom: calc(8px + env(safe-area-inset-bottom)); left: 8px;

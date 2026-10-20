@@ -493,12 +493,13 @@
         if (bell) { e.stopPropagation(); openSheet(bell.dataset.id); return; }
         const row = e.target.closest('.mine-row');
         if (row) { focus(row.dataset.id); return; }
-        if (e.target.closest('.mine-header')) {
-            const collapsed = !card.classList.contains('collapsed');
-            card.classList.toggle('collapsed', collapsed);
-            try { localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (x) { /* */ }
-        }
+        if (e.target.closest('.mine-header')) setCollapsed(!card.classList.contains('collapsed'));
     });
+
+    function setCollapsed(v) {
+        card.classList.toggle('collapsed', v);
+        try { localStorage.setItem(COLLAPSED_KEY, v ? '1' : '0'); } catch (x) { /* */ }
+    }
 
     window.addEventListener('load', () => { render(); initPush(); });
 

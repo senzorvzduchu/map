@@ -21,7 +21,7 @@ function openInfoModal() {
             <summary>📡 Senzorové sítě</summary>
             <table class="info-table">
                 <tr><th>Síť</th><th>Co to je</th><th>Váha</th></tr>
-                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice státní sítě. Měří PM2.5, PM10, NO₂ i O₃ certifikovanými analyzátory. Stanice, která zvolenou látku neměří, je na mapě jako prázdné kolečko. Vedle ~90 stanic ČHMÚ z otevřených dat jsou od verze 3.4 i stanice jiných provozovatelů (zdravotní ústavy, kraje, města, podniky — např. Ostrava-Radvanice ZÚ, Brno-Svatoplukova, Třinec-Kanada), které ČHMÚ přebírá a zobrazuje na chmi.cz; provozovatel je uveden v popupu. Data: ČHMÚ, licence CC BY 4.0. Teplotu a vlhkost dodává jiná sada stanic ČHMÚ: 61 meteorologických stanic (otevřená data ČHMÚ, 10minutové hodnoty, krajská a okresní města, horské stanice). Na mapě jsou referencí s černým okrajem; stanice kvality ovzduší se při volbě teploty nebo vlhkosti skryjí.</td><td>1.0</td></tr>
+                <tr><td><strong>ČHMÚ</strong></td><td>Oficiální referenční stanice s certifikovanými analyzátory: PM2.5, PM10, NO₂, O₃. Prázdné kolečko = stanice zvolenou látku neměří. Zahrnuje i stanice jiných provozovatelů (zdravotní ústavy, kraje, města, podniky), které ČHMÚ přebírá. Teplotu a vlhkost dodává 61 meteostanic ČHMÚ (černý okraj). Data ČHMÚ, CC BY 4.0.</td><td>1.0</td></tr>
                 <tr><td><strong>PurpleAir</strong></td><td>Komunitní optické senzory. Hodnoty PM2.5 jsou korigované vzorcem US EPA (Barkjohn 2021).</td><td>0.25</td></tr>
                 <tr><td><strong>Smart Citizen</strong></td><td>Open-source stanice (Fab Lab Barcelona). Jediná síť s měřením <strong>hluku</strong> (MEMS mikrofon, dB(A)).</td><td>0.15</td></tr>
                 <tr><td><strong>Sensor.Community</strong></td><td>Největší DIY síť v ČR — levné optické senzory PM2.5/PM10, které si lidé staví sami.</td><td>0.10</td></tr>
@@ -30,7 +30,10 @@ function openInfoModal() {
             </table>
             <p>Váha říká, jak moc daná síť ovlivňuje interpolační odhad (viz níže).
             Vlastní senzor si postavíte za cca 2&nbsp;000&nbsp;Kč — návod na
-            <a href="https://senzorvzduchu.cz/senzory" target="_blank" rel="noopener">senzorvzduchu.cz/senzory</a>.</p>
+            <a href="https://senzorvzduchu.cz/senzory" target="_blank" rel="noopener">senzorvzduchu.cz/senzory</a>.
+            Co nízkonákladové senzory umí a neumí, shrnuje publikace
+            <a href="https://www.projekt-aramis.cz/results/Senzory_2024.pdf" target="_blank" rel="noopener">Doporučení pro nakládání s nízkonákladovými senzory pro monitoring znečištění venkovního ovzduší</a>
+            (projekt ARAMIS, 2024, PDF).</p>
         </details>
 
         <details class="info-sec">

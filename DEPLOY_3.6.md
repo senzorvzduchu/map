@@ -82,3 +82,24 @@ Vrátit `map/index.html`, `map/embed.html`, `map/app.js`, `map/style.css`, `map/
   Výměna `push-vapid.php` = zánik VŠECH odběrů.
 - `push.db` roste jen s odběry (řádek ≈ 0,5 kB). Smazat zaniklé ručně není třeba.
 - Ventilace bere jen PM2.5 první sledované stanice; ČHMÚ stanice bez PM2.5 → „Senzor teď nehlásí PM2.5".
+
+## 7. 3.6.2 - karta „Moje senzory" na mobilu (20. 10. 2026)
+
+Sbalená karta je na mobilu (≤ 768 px) pilulka „★ Moje senzory ›" vlevo dole místo pruhu přes celou šířku.
+Sbalit/rozbalit = klepnout na hlavičku / pilulku (tažení mapy kartu nemění). Stav se dál ukládá do `sv_mine_collapsed`.
+Čtení větru (vlevo dole) se posouvá nad pilulku. Web na počítači beze změny.
+
+V modalu „Jak mapa funguje" → Senzorové sítě přibyl odkaz na publikaci ARAMIS „Doporučení pro nakládání s nízkonákladovými
+senzory…" (projekt-aramis.cz, PDF) za odstavcem o váze a vlastním senzoru (`info.js?v=3.6.2`, i embed).
+
+Nahrát FTP: `map/index.html` (`style.css`, `mine.js`, `info.js` ?v=3.6.2), `map/embed.html` (verze CSS a info.js), `map/style.css`,
+`map/mine.js`, `map/info.js`. Ověřeno lokálně 20. 10. 2026 (sandbox 8135, mobilní viewport, tmavý režim).
+
+**NASAZENO 20. 10. 2026 ~17:20 (ruční FTP uživatelem).** Ověřeno živě: všech 5 souborů shodných s lokálem (md5), pilulka
+„★ Moje senzory ›“ 114×27 px vlevo dole na mobilním viewportu, tažení mapy kartu nezavírá, odkaz ARAMIS v modalu, žádné chyby v konzoli.
+
+## 8. 3.6.3 - kratší text ČHMÚ v modalu (20. 10. 2026)
+
+Řádek ČHMÚ v tabulce sítí zkrácen z ~735 na ~315 znaků (na mobilu zabíral skoro celý displej). Nahrát FTP: `map/info.js`, `map/index.html`, `map/embed.html` (`info.js?v=3.6.3`).
+
+**NASAZENO 20. 10. 2026 ~17:35 (ruční FTP uživatelem).** Ověřeno: 3 soubory shodné s lokálem (md5), index i embed na `info.js?v=3.6.3`.

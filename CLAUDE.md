@@ -210,6 +210,7 @@ SENSOR's coordinates (orp-areas.js rings → kraj), not the visitor's.
   `display-mode: standalone`) BEFORE app.js/interp.js run; in app mode interpolation defaults OFF (own key
   `sv_interp_app`), the +/− control is hidden, data refetch on return to foreground. (The 3.5.3 navy body background was reverted in 3.6.1: Chrome paints
   the Android 15 bottom strip itself, and on iOS the canvas colour shows under the home indicator.)
+- 3.6.2: on mobile the collapsed `.mine` card is a pill (bottom-left); tap the header/pill to toggle. Desktop unchanged.
 
 ## ⭐ My sensors, push alerts, ventilation advice (3.6, index.html only)
 
